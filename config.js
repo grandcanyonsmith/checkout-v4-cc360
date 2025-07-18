@@ -23,7 +23,7 @@ const config = {
 
   // Stripe configuration
   stripe: {
-    publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || 'pk_test_51RMwm4B4vAF3NRPR7nDhjgYs9YLJlacA7pAtk2fBvI4AIMGXVtiIiV3BSv1lR6w5GdJ94sAiL0SagTJ8YVgP4EZQ00CMe6mQ7q',
+    publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || 'pk_test_51LNznbBnnqL8bKFQsEYiA6EckkmudROvi9eTAb18peGJPZ3864HR4ZPvqFy368lot7taDY0eRGiWlO2kYciM55hX001Au8CPpa',
     secretKey: process.env.STRIPE_SECRET_KEY,
     webhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
     apiVersion: '2022-11-15'
