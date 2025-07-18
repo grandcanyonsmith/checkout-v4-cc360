@@ -21,6 +21,9 @@ class CheckoutApp {
       debug() {} 
     })('CheckoutApp');
 
+    // Initialize analytics
+    this.analytics = window.AnalyticsManager || null;
+
     // State management
     this.state = {
       isLoading: true,
@@ -49,6 +52,11 @@ class CheckoutApp {
    */
   async init() {
     try {
+      // Track initialization start
+      if (this.analytics) {
+        this.analytics.trackEvent('checkout_init_start');
+      }
+      
       await this.setupDOM();
       await this.setupEventListeners();
       await this.determineSubscriptionType();
@@ -57,9 +65,19 @@ class CheckoutApp {
       await this.prefillForm();
       this.hideLoading();
       this.setupFormAutoSave();
+      
+      // Track successful initialization
+      if (this.analytics) {
+        this.analytics.trackEvent('checkout_init_complete');
+      }
     } catch (error) {
       console.error('Initialization error:', error);
       this.showError('Failed to initialize the checkout. Please refresh the page.');
+      
+      // Track initialization error
+      if (this.analytics) {
+        this.analytics.trackError(error, { context: 'checkout_init' });
+      }
     }
   }
 
@@ -355,12 +373,24 @@ class CheckoutApp {
     if (this.state.isSubmitting) return;
 
     try {
+      // Track form submission start
+      if (this.analytics) {
+        this.analytics.trackFormEvent('submit_start', {
+          subscription_type: this.state.subscriptionType
+        });
+      }
+
       this.setSubmitting(true);
 
       // Validate all fields
       const isValid = await this.validateAllFields();
       if (!isValid) {
         this.setSubmitting(false);
+        
+        // Track validation failure
+        if (this.analytics) {
+          this.analytics.trackFormEvent('validation_failed');
+        }
         return;
       }
 
@@ -376,10 +406,23 @@ class CheckoutApp {
       // Confirm payment
       await this.confirmPayment(clientSecret);
 
+      // Track successful submission
+      if (this.analytics) {
+        this.analytics.trackFormEvent('submit_success', {
+          subscription_type: this.state.subscriptionType,
+          customer_id: this.state.customerId
+        });
+      }
+
     } catch (error) {
       console.error('Submission error:', error);
       this.showError('An error occurred while processing your request. Please try again.');
       this.setSubmitting(false);
+      
+      // Track submission error
+      if (this.analytics) {
+        this.analytics.trackError(error, { context: 'form_submission' });
+      }
     }
   }
 

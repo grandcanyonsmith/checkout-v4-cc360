@@ -127,6 +127,11 @@ class EmailValidator {
    * Validate email with Mailgun API (debounced)
    */
   async validateWithAPI(email, options = {}) {
+    // Track email validation start
+    if (window.AnalyticsManager) {
+      window.AnalyticsManager.trackEmailValidation('api_call_start', { email });
+    }
+    
     // Clear any existing debounce timer
     if (this.debounceTimers.has(email)) {
       clearTimeout(this.debounceTimers.get(email));
@@ -177,6 +182,14 @@ class EmailValidator {
 
           const apiResult = await response.json();
           
+          // Track Mailgun API success
+          if (window.AnalyticsManager) {
+            window.AnalyticsManager.trackMailgunEvent('validation_success', {
+              email,
+              result: apiResult
+            });
+          }
+          
           // Merge results
           const finalResult = {
             ...basicResult,
@@ -193,6 +206,15 @@ class EmailValidator {
           resolve(finalResult);
         } catch (error) {
           console.error('Email validation error:', error);
+          
+          // Track Mailgun API error
+          if (window.AnalyticsManager) {
+            window.AnalyticsManager.trackMailgunEvent('validation_error', {
+              email,
+              error: error.message
+            });
+          }
+          
           // Fall back to basic validation
           resolve({
             ...this.validateBasic(email),
