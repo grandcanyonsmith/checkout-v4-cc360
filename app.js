@@ -1369,4 +1369,81 @@ class ErrorReporter {
   }
 
   static captureMessage(message, level = 'info') {
-    console.log(`
+    console.log(`[${level.toUpperCase()}] ${message}`);
+    
+    // Send to error reporting service
+    // if (window.Sentry) {
+    //   Sentry.captureMessage(message, level);
+    // }
+  }
+}
+
+// Initialize application when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+  PerformanceMonitor.mark('app-init-start');
+  
+  try {
+    // Handle route changes
+    if (window.RouteConfig) {
+      window.RouteConfig.handleRouteChange();
+    }
+    
+    // Initialize analytics
+    Analytics.trackFormStart();
+    
+    // Initialize the checkout app
+    window.checkoutApp = new CheckoutApp();
+    
+    // Ensure identity verification modal is hidden on load
+    const modal = document.getElementById('identity-verification-modal');
+    if (modal) {
+      console.log('Checking modal state on init:', {
+        hasHiddenClass: modal.classList.contains('hidden'),
+        computedDisplay: window.getComputedStyle(modal).display
+      });
+      if (!modal.classList.contains('hidden')) {
+        console.log('Modal was visible on load, hiding it');
+        modal.classList.add('hidden');
+      }
+    }
+    
+    PerformanceMonitor.mark('app-init-end');
+    PerformanceMonitor.measure('app-initialization', 'app-init-start', 'app-init-end');
+    
+  } catch (error) {
+    ErrorReporter.captureError(error, { context: 'app-initialization' });
+    document.body.innerHTML = `
+      <div class="min-h-screen flex items-center justify-center bg-gray-50">
+        <div class="text-center">
+          <h1 class="text-2xl font-bold text-gray-900 mb-4">Something went wrong</h1>
+          <p class="text-gray-600 mb-4">We're having trouble loading the checkout page.</p>
+          <button onclick="location.reload()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+            Try Again
+          </button>
+        </div>
+      </div>
+    `;
+  }
+});
+
+// Handle page visibility changes
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    // Page became visible - refresh data if needed
+    if (window.checkoutApp) {
+      window.checkoutApp.loadAutoSavedData();
+    }
+  }
+});
+
+// Handle beforeunload to save form data
+window.addEventListener('beforeunload', () => {
+  if (window.checkoutApp) {
+    window.checkoutApp.autoSaveForm();
+  }
+});
+
+// Export for testing (only in Node.js environment)
+if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
+  module.exports = { CheckoutApp, Analytics, PerformanceMonitor, ErrorReporter };
+}
