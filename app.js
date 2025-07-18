@@ -449,7 +449,6 @@ class CheckoutApp {
         console.log('Payment element created and mounted successfully');
         
         // Add visual feedback that payment element is ready
-        const paymentElementDiv = document.getElementById('payment-element');
         if (paymentElementDiv) {
           // Add a subtle success indicator
           const readyIndicator = document.createElement('div');
