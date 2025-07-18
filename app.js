@@ -1012,11 +1012,14 @@ class CheckoutApp {
    * Confirm payment with Stripe
    */
   async confirmPayment(clientSecret) {
-    // Prepare billing details
+    // Prepare billing details with required address information
     const billingDetails = {
       name: `${this.elements['firstName'].value.trim()} ${this.elements['lastName'].value.trim()}`,
       email: this.elements['email'].value.trim(),
-      phone: this.elements['phone'].value.trim()
+      phone: this.elements['phone'].value.trim(),
+      address: {
+        country: 'US' // Default to US since we're not collecting address
+      }
     };
 
     try {
