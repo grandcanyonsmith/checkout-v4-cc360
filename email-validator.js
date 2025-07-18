@@ -3,9 +3,9 @@
  * Provides real-time email validation with Mailgun API support
  */
 
-// Check if EmailValidator already exists to prevent duplicate declaration
-if (typeof EmailValidator === 'undefined') {
-  class EmailValidator {
+// Only declare EmailValidator if it doesn't exist
+if (typeof window !== 'undefined' && !window.EmailValidator) {
+  window.EmailValidator = class EmailValidator {
   constructor() {
     // Configuration
     this.config = {
@@ -294,9 +294,9 @@ if (typeof EmailValidator === 'undefined') {
     this.cache.clear();
   }
 }
-
+  
   // Export for use in other files
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = EmailValidator;
+    module.exports = window.EmailValidator;
   }
 } 

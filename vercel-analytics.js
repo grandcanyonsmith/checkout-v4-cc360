@@ -160,19 +160,17 @@ class VercelAnalytics {
 }
 
 // Initialize analytics only if not already initialized
-if (typeof window.VercelAnalytics === 'undefined') {
+if (typeof window !== 'undefined' && !window.VercelAnalytics) {
   const vercelAnalytics = new VercelAnalytics();
   
   // Export for use in other scripts
-  if (typeof window !== 'undefined') {
-    window.VercelAnalytics = vercelAnalytics;
-    
-    // Add debug method to window for easy testing
-    window.debugAnalytics = () => {
-      console.log('🔍 Analytics Status:', vercelAnalytics.getStatus());
-      return vercelAnalytics.getStatus();
-    };
-  }
+  window.VercelAnalytics = vercelAnalytics;
+  
+  // Add debug method to window for easy testing
+  window.debugAnalytics = () => {
+    console.log('🔍 Analytics Status:', vercelAnalytics.getStatus());
+    return vercelAnalytics.getStatus();
+  };
 }
 
 console.log('🎯 VercelAnalytics class ready');
