@@ -5,37 +5,16 @@
 
 class CheckoutApp {
   constructor() {
+    // Ensure configuration is loaded
+    if (!window.AppConfig) {
+      throw new Error('Configuration not loaded. Please ensure config.js is loaded before app.js');
+    }
+    
     // Use global configuration
-    this.config = window.AppConfig || {
-      stripe: { publishableKey: '' },
-      urls: { successRedirect: '' },
-      ui: { debounceDelay: 300, passwordMinLength: 8 },
-      validation: {
-        emailRegex: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-        phoneRegex: /^[\+]?[1-9][\d]{0,15}$/
-      },
-      pricing: {
-        monthly: {
-          priceId: "price_1Rm2YrB4vAF3NRPRsPaLBTwN",
-          amount: 14700, // $147.00 in cents
-          currency: "usd",
-          interval: "month",
-          hasTrial: true,
-          trialDays: 30
-        },
-        annual: {
-          priceId: "price_1Rm2ZFB4vAF3NRPRqE8pzimp",
-          amount: 147000,
-          currency: "usd",
-          interval: "year",
-          hasTrial: false,
-          trialDays: 0
-        }
-      }
-    };
+    this.config = window.AppConfig;
     
     // Initialize logger
-    this.logger = new (window.ClientLogger || class { 
+    this.logger = new (window.Logger || class { 
       error() {} 
       warn() {} 
       info() {} 
@@ -262,11 +241,20 @@ class CheckoutApp {
    * Load Stripe library
    */
   loadStripe() {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
+      // Ensure we have AppConfig
+      if (!window.AppConfig || !window.AppConfig.stripe || !window.AppConfig.stripe.publishableKey) {
+        reject(new Error('AppConfig not loaded or missing Stripe publishable key'));
+        return;
+      }
+      
+      const publishableKey = window.AppConfig.stripe.publishableKey;
+      console.log('Loading Stripe with key:', publishableKey.substring(0, 20) + '...');
+      
       if (window.Stripe) {
-        resolve(Stripe(this.config.stripe.publishableKey));
+        resolve(Stripe(publishableKey));
       } else {
-        window.addEventListener('load', () => resolve(Stripe(this.config.stripe.publishableKey)));
+        window.addEventListener('load', () => resolve(Stripe(publishableKey)));
       }
     });
   }

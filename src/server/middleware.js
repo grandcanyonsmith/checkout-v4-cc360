@@ -3,8 +3,8 @@
  * Security headers, rate limiting, error handling, etc.
  */
 
-const config = require('./config');
-const { logger } = require('./logger');
+const config = require('../shared/config');
+const { logger } = require('../shared/logger');
 
 // Rate limiting to prevent abuse
 const rateLimiter = (() => {
@@ -49,8 +49,10 @@ const securityHeaders = (req, res, next) => {
   // XSS Protection
   res.setHeader('X-XSS-Protection', '1; mode=block');
   
-  // Prevent MIME sniffing
-  res.setHeader('X-Content-Type-Options', 'nosniff');
+  // Prevent MIME sniffing (skip for JS files to avoid conflicts)
+  if (!req.path.endsWith('.js')) {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+  }
   
   // Referrer Policy
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');

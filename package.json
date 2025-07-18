@@ -2,12 +2,12 @@
   "name": "course-creator-360-checkout",
   "version": "4.0.0",
   "description": "Enhanced checkout page for Course Creator 360 with modern UX, security, and accessibility features",
-  "main": "server.js",
+  "main": "src/server/server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node serve.js",
-    "serve": "node serve.js",
-    "server": "node server.js",
+    "start": "node src/server/server.js",
+    "dev": "node src/server/serve.js",
+    "serve": "node src/server/serve.js",
+    "server": "node src/server/server.js",
     "test": "vitest --run",
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
@@ -40,7 +40,8 @@
   "dependencies": {
     "@vercel/analytics": "^1.5.0",
     "cors": "^2.8.5",
-    "express": "^4.18.2",
+    "dotenv": "^17.2.0",
+    "express": "^4.21.2",
     "stripe": "^14.0.0"
   },
   "repository": {

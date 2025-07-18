@@ -1,14 +1,20 @@
 const express = require('express');
 const path = require('path');
 const cors = require('cors');
-const config = require('./config');
-const { logger } = require('./logger');
+const fs = require('fs');
+const config = require('../shared/config');
+const { logger } = require('../shared/logger');
 const stripe = require('stripe')(config.stripe.secretKey);
 
 const app = express();
 const PORT = config.server.port;
 const serverLogger = logger.child('Server');
 const middleware = require('./middleware');
+
+// Validate environment variables
+if (!config.validateEnvironment()) {
+  process.exit(1);
+}
 
 // Trust proxy for accurate IP addresses
 app.set('trust proxy', true);
@@ -23,12 +29,27 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '10mb' }));
 app.use(middleware.sanitizeInput);
-app.use(express.static(path.join(__dirname), {
-  maxAge: config.server.isProduction ? '1d' : 0,
+
+// Serve static files from public directory (excluding index.html)
+app.use(express.static(path.join(__dirname, '../../public'), {
+  maxAge: config.isProduction ? '1d' : 0,
+  etag: true,
+  index: false // Don't serve index.html automatically
+}));
+
+// Serve client JavaScript files from src/client
+app.use('/js', express.static(path.join(__dirname, '../client'), {
+  maxAge: config.isProduction ? '1d' : 0,
   etag: true
 }));
 
-// Handle payment intent creation
+// Serve shared JavaScript files
+app.use('/js', express.static(path.join(__dirname, '../shared'), {
+  maxAge: config.isProduction ? '1d' : 0,
+  etag: true
+}));
+
+// API routes
 app.post('/api/create-payment-intent', async (req, res) => {
   try {
     const { amount, currency, subscription_type, price_id, customer_id, subscription_id } = req.body;
@@ -284,61 +305,57 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Serve static files with proper MIME types
-app.get('/styles.css', (req, res) => {
-  res.setHeader('Content-Type', 'text/css');
-  res.sendFile(path.join(__dirname, 'styles.css'));
-});
+// Legacy static file routes removed - now handled by express.static middleware
 
-app.get('/app.js', (req, res) => {
+// Handle Vercel Analytics script
+app.get('/_vercel/insights/script.js', (req, res) => {
   res.setHeader('Content-Type', 'application/javascript');
-  res.sendFile(path.join(__dirname, 'app.js'));
+  // Return empty script if file doesn't exist
+  res.send('// Vercel Analytics placeholder');
 });
 
-app.get('/routes.js', (req, res) => {
-  res.setHeader('Content-Type', 'application/javascript');
-  res.sendFile(path.join(__dirname, 'routes.js'));
-});
-
-app.get('/email-validator.js', (req, res) => {
-  res.setHeader('Content-Type', 'application/javascript');
-  res.sendFile(path.join(__dirname, 'email-validator.js'));
-});
-
-app.get('/app-config.js', (req, res) => {
-  res.setHeader('Content-Type', 'application/javascript');
-  res.sendFile(path.join(__dirname, 'app-config.js'));
-});
-
-// Handle /signup/ paths for static files
-app.get('/signup/styles.css', (req, res) => {
-  res.setHeader('Content-Type', 'text/css');
-  res.sendFile(path.join(__dirname, 'styles.css'));
-});
-
-app.get('/signup/app.js', (req, res) => {
-  res.setHeader('Content-Type', 'application/javascript');
-  res.sendFile(path.join(__dirname, 'app.js'));
-});
-
-app.get('/signup/routes.js', (req, res) => {
-  res.setHeader('Content-Type', 'application/javascript');
-  res.sendFile(path.join(__dirname, 'routes.js'));
-});
-
-app.get('/signup/email-validator.js', (req, res) => {
-  res.setHeader('Content-Type', 'application/javascript');
-  res.sendFile(path.join(__dirname, 'email-validator.js'));
-});
-
-app.get('/signup/app-config.js', (req, res) => {
-  res.setHeader('Content-Type', 'application/javascript');
-  res.sendFile(path.join(__dirname, 'app-config.js'));
-});
-
-// Serve the checkout page for all other routes (must be last)
+// Serve index.html with configuration injection for all routes
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
+  const htmlPath = path.join(__dirname, '../../public/index.html');
+  
+  fs.readFile(htmlPath, 'utf8', (err, html) => {
+    if (err) {
+      serverLogger.error('Failed to read index.html', err);
+      return res.status(500).send('Internal Server Error');
+    }
+    
+    // Prepare configuration for client
+    const clientConfig = {
+      stripePublishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
+      successRedirectUrl: process.env.SUCCESS_REDIRECT_URL || 'https://link.coursecreator360.com/widget/bookings/cc360/onboarding',
+      pricingConfig: {
+        monthly: {
+          priceId: process.env.MONTHLY_PRICE_ID || '',
+          amount: parseInt(process.env.MONTHLY_AMOUNT || '14700'),
+          currency: 'usd',
+          interval: 'month',
+          hasTrial: true,
+          trialDays: 30
+        },
+        annual: {
+          priceId: process.env.ANNUAL_PRICE_ID || '',
+          amount: parseInt(process.env.ANNUAL_AMOUNT || '147000'),
+          currency: 'usd',
+          interval: 'year',
+          hasTrial: false,
+          trialDays: 0
+        }
+      }
+    };
+    
+    // Replace template variables
+    html = html
+      .replace('<%- stripePublishableKey %>', clientConfig.stripePublishableKey)
+      .replace('<%- successRedirectUrl %>', clientConfig.successRedirectUrl)
+      .replace('<%- JSON.stringify(pricingConfig) %>', JSON.stringify(clientConfig.pricingConfig));
+    
+    res.send(html);
+  });
 });
 
 // Add error handling middleware (must be last)

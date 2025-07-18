@@ -41,8 +41,22 @@ const server = http.createServer((req, res) => {
     pathname = '/index.html';
   }
 
-  // Get file path
-  const filePath = path.join(__dirname, pathname);
+  // Get file path - serve from public directory
+  let filePath;
+  if (pathname.startsWith('/js/')) {
+    // JavaScript files from src directories
+    const jsPath = pathname.slice(4); // Remove '/js/'
+    
+    // Try client directory first
+    filePath = path.join(__dirname, '../client', jsPath);
+    if (!fs.existsSync(filePath)) {
+      // Try shared directory
+      filePath = path.join(__dirname, '../shared', jsPath);
+    }
+  } else {
+    // Static files from public directory
+    filePath = path.join(__dirname, '../../public', pathname);
+  }
   const extname = path.extname(filePath).toLowerCase();
 
   // Set CORS headers
@@ -121,7 +135,7 @@ server.listen(PORT, () => {
 📍 Local: http://localhost:${PORT}
 🌐 Network: http://0.0.0.0:${PORT}
 
-📁 Serving files from: ${__dirname}
+📁 Serving files from: public/ and src/
 ⏰ Started at: ${new Date().toLocaleString()}
 
 Press Ctrl+C to stop the server

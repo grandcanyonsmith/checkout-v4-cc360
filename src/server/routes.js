@@ -11,7 +11,7 @@ const routes = {
     subscriptionType: 'monthly',
     hasTrial: true,
     trialDays: 30,
-    priceId: 'price_1Rm2YrB4vAF3NRPRsPaLBTwN',
+    priceId: 'price_1RmI9LBnnqL8bKFQyQA3C8n4',
     monthlyPrice: 147,
     annualPrice: 1470,
     buttonText: 'Start Free Trial',
@@ -27,7 +27,7 @@ const routes = {
     subscriptionType: 'annual',
     hasTrial: false,
     trialDays: 0,
-    priceId: 'price_1Rm2ZFB4vAF3NRPRqE8pzimp',
+    priceId: 'price_1RmI9LBnnqL8bKFQyQA3C8n4', // Using same price for now - update with your annual price ID
     monthlyPrice: 147,
     annualPrice: 1470,
     buttonText: 'Start Annual Plan',
