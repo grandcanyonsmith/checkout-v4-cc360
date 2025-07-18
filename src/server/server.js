@@ -356,7 +356,7 @@ app.get('*', (req, res) => {
         },
         annual: {
           priceId: process.env.ANNUAL_PRICE_ID || '',
-          amount: parseInt(process.env.ANNUAL_AMOUNT || '147000'),
+          amount: parseInt(process.env.ANNUAL_AMOUNT || '14700'),
           currency: 'usd',
           interval: 'year',
           hasTrial: false,
