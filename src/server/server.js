@@ -362,17 +362,22 @@ app.get('*', (req, res) => {
 app.use(middleware.notFoundHandler);
 app.use(middleware.errorHandler);
 
-// Start server
-const server = app.listen(PORT, config.server.host, () => {
-  serverLogger.info('Server started', {
-    port: PORT,
-    host: config.server.host,
-    environment: config.server.env,
-    nodeVersion: process.version
-  });
-  
-  if (!config.server.isProduction) {
-    console.log(`
+// Export the Express app for Vercel/serverless environments
+module.exports = app;
+
+// Only start the server if this file is run directly
+if (require.main === module) {
+  // Start server
+  const server = app.listen(PORT, config.server.host, () => {
+    serverLogger.info('Server started', {
+      port: PORT,
+      host: config.server.host,
+      environment: config.server.env,
+      nodeVersion: process.version
+    });
+    
+    if (!config.server.isProduction) {
+      console.log(`
 🚀 Course Creator 360 Checkout Server
 
 📍 Local: http://localhost:${PORT}
@@ -382,35 +387,36 @@ const server = app.listen(PORT, config.server.host, () => {
 ⏰ Started at: ${new Date().toLocaleString()}
 
 Press Ctrl+C to stop the server
-    `);
-  }
-});
-
-// Graceful shutdown
-const gracefulShutdown = () => {
-  serverLogger.info('Shutdown signal received');
-  
-  server.close(() => {
-    serverLogger.info('HTTP server closed');
-    process.exit(0);
+      `);
+    }
   });
-  
-  // Force shutdown after 10 seconds
-  setTimeout(() => {
-    serverLogger.error('Force shutting down');
+
+  // Graceful shutdown
+  const gracefulShutdown = () => {
+    serverLogger.info('Shutdown signal received');
+    
+    server.close(() => {
+      serverLogger.info('HTTP server closed');
+      process.exit(0);
+    });
+    
+    // Force shutdown after 10 seconds
+    setTimeout(() => {
+      serverLogger.error('Force shutting down');
+      process.exit(1);
+    }, 10000);
+  };
+
+  process.on('SIGTERM', gracefulShutdown);
+  process.on('SIGINT', gracefulShutdown);
+
+  // Error handling
+  process.on('unhandledRejection', (reason, promise) => {
+    serverLogger.error('Unhandled Rejection', { reason, promise });
+  });
+
+  process.on('uncaughtException', (error) => {
+    serverLogger.error('Uncaught Exception', error);
     process.exit(1);
-  }, 10000);
-};
-
-process.on('SIGTERM', gracefulShutdown);
-process.on('SIGINT', gracefulShutdown);
-
-// Error handling
-process.on('unhandledRejection', (reason, promise) => {
-  serverLogger.error('Unhandled Rejection', { reason, promise });
-});
-
-process.on('uncaughtException', (error) => {
-  serverLogger.error('Uncaught Exception', error);
-  process.exit(1);
-}); 
+  });
+} 

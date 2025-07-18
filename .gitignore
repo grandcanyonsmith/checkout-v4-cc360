@@ -100,3 +100,4 @@ temp/
 .local/ 
 
 .env
+.vercel

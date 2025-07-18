@@ -1,24 +1,14 @@
 {
   "version": 2,
-  "name": "course-creator-360-checkout",
-  "builds": [
+  "rewrites": [
     {
-      "src": "src/server/server.js",
-      "use": "@vercel/node"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/src/server/server.js"
+      "source": "/(.*)",
+      "destination": "/api/serverless"
     }
   ],
   "functions": {
-    "src/server/server.js": {
+    "api/serverless.js": {
       "maxDuration": 30
     }
-  },
-  "env": {
-    "NODE_ENV": "production"
   }
 }
