@@ -410,7 +410,7 @@ class CheckoutApp {
       this.paymentElement = this.stripeElements.create('payment', {
         fields: {
           billingDetails: {
-            address: 'auto', // Collect address automatically
+            address: 'full', // Collect full billing address
           }
         },
         paymentMethodOrder: ['card'], // Only allow cards, no other payment methods
