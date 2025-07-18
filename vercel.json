@@ -1,0 +1,30 @@
+{
+  "version": 2,
+  "name": "course-creator-360-checkout",
+  "builds": [
+    {
+      "src": "server.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/server.js"
+    }
+  ],
+  "functions": {
+    "server.js": {
+      "maxDuration": 30
+    }
+  },
+  "env": {
+    "NODE_ENV": "production"
+  },
+  "analytics": {
+    "enabled": true
+  },
+  "speedInsights": {
+    "enabled": true
+  }
+}
