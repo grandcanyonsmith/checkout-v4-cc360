@@ -304,50 +304,69 @@ class CheckoutApp {
       price_id: pricing.priceId
     });
 
-    const response = await fetch('/api/create-payment-intent', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        subscription_type: this.state.subscriptionType,
-        price_id: pricing.priceId,
-        email: this.elements['email'].value.trim(),
-        name: `${this.elements['firstName'].value.trim()} ${this.elements['lastName'].value.trim()}`,
-        phone: this.elements['phone'].value.trim()
-      })
-    });
-    
-    const data = await response.json();
-    
-    console.log('Payment intent response:', {
-      status: response.status,
-      ok: response.ok,
-      data: data
-    });
-    
-    if (!response.ok) {
-      if (data.error === 'Customer already has an active subscription') {
-        throw new Error('You already have an active subscription. Please contact support if you need to make changes to your account.');
-      } else if (data.error === 'Customer has a pending subscription that needs to be completed first') {
-        throw new Error('You have a pending subscription that needs to be completed. Please check your email for payment instructions or contact support.');
-      } else {
-        throw new Error(data.error || `Failed to create payment intent: ${response.status}`);
+    try {
+      const response = await fetch('/api/create-payment-intent', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          subscription_type: this.state.subscriptionType,
+          price_id: pricing.priceId,
+          email: this.elements['email'].value.trim(),
+          name: `${this.elements['firstName'].value.trim()} ${this.elements['lastName'].value.trim()}`,
+          phone: this.elements['phone'].value.trim()
+        })
+      });
+      
+      const data = await response.json();
+      
+      console.log('Payment intent response:', {
+        status: response.status,
+        ok: response.ok,
+        data: data
+      });
+      
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Authentication error. Please refresh the page and try again.');
+        } else if (response.status === 429) {
+          throw new Error('Too many requests. Please wait a moment and try again.');
+        } else if (response.status >= 500) {
+          throw new Error('Server error. Please try again in a few moments.');
+        } else if (data.error === 'Customer already has an active subscription') {
+          throw new Error('You already have an active subscription. Please contact support if you need to make changes to your account.');
+        } else if (data.error === 'Customer has a pending subscription that needs to be completed first') {
+          throw new Error('You have a pending subscription that needs to be completed. Please check your email for payment instructions or contact support.');
+        } else {
+          throw new Error(data.error || `Failed to create payment intent: ${response.status}`);
+        }
       }
+      
+      // Store the customer_id and preauth info from the response
+      if (data.customer_id) {
+        this.state.customerId = data.customer_id;
+      }
+      if (data.is_preauth) {
+        this.state.isPreauth = true;
+        this.state.preAuthAmount = data.preauth_amount;
+      }
+      
+      console.log('Payment intent created successfully, client secret type:', data.client_secret ? (data.client_secret.startsWith('seti_') ? 'SetupIntent' : 'PaymentIntent') : 'None');
+      
+      return data.client_secret;
+      
+    } catch (error) {
+      console.error('Payment intent creation error:', error);
+      
+      // If it's a network error, suggest refreshing
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        throw new Error('Network error. Please check your connection and try again.');
+      }
+      
+      // Re-throw the error
+      throw error;
     }
-    
-    // Store the customer_id and preauth info from the response
-    if (data.customer_id) {
-      this.state.customerId = data.customer_id;
-    }
-    if (data.is_preauth) {
-      this.state.isPreauth = true;
-      this.state.preAuthAmount = data.preauth_amount;
-    }
-    
-    console.log('Payment intent created successfully, client secret type:', data.client_secret ? (data.client_secret.startsWith('seti_') ? 'SetupIntent' : 'PaymentIntent') : 'None');
-    
-    return data.client_secret;
   }
 
   /**
@@ -365,71 +384,93 @@ class CheckoutApp {
     // Show loading state
     paymentElementDiv.innerHTML = '<div class="text-center py-4"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div><p class="mt-2 text-gray-600">Loading payment form...</p></div>';
 
-    try {
-      // Create Stripe elements instance with the client secret
-      this.stripeElements = this.stripe.elements({
-        clientSecret: clientSecret,
-        appearance: { 
-          theme: 'stripe',
-          variables: {
-            colorPrimary: '#3b82f6',
-            colorBackground: '#ffffff',
-            colorText: '#1f2937',
-            colorDanger: '#ef4444',
-            fontFamily: 'system-ui, -apple-system, sans-serif',
-            spacingUnit: '4px',
-            borderRadius: '6px'
+    let retryCount = 0;
+    const maxRetries = 2;
+
+    while (retryCount <= maxRetries) {
+      try {
+        // Create Stripe elements instance with the client secret
+        this.stripeElements = this.stripe.elements({
+          clientSecret: clientSecret,
+          appearance: { 
+            theme: 'stripe',
+            variables: {
+              colorPrimary: '#3b82f6',
+              colorBackground: '#ffffff',
+              colorText: '#1f2937',
+              colorDanger: '#ef4444',
+              fontFamily: 'system-ui, -apple-system, sans-serif',
+              spacingUnit: '4px',
+              borderRadius: '6px'
+            }
           }
-        }
-      });
+        });
 
-      // Create and mount the payment element
-      this.paymentElement = this.stripeElements.create('payment', {
-        fields: {
-          billingDetails: {
-            address: 'never', // We collect address separately
+        // Create and mount the payment element
+        this.paymentElement = this.stripeElements.create('payment', {
+          fields: {
+            billingDetails: {
+              address: 'never', // We collect address separately
+            }
+          },
+          paymentMethodOrder: ['card'], // Only allow cards, no other payment methods
+          terms: {
+            card: 'never' // Don't show card terms
           }
-        },
-        paymentMethodOrder: ['card'], // Only allow cards, no other payment methods
-        terms: {
-          card: 'never' // Don't show card terms
+        });
+
+        // Clear loading state and mount
+        paymentElementDiv.innerHTML = '';
+        this.paymentElement.mount('#payment-element');
+
+        // Add pre-authorization notice for trial subscriptions
+        if (this.state.isPreauth) {
+          const noticeDiv = document.createElement('div');
+          noticeDiv.className = 'mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md';
+          noticeDiv.innerHTML = `
+            <div class="flex items-start">
+              <div class="flex-shrink-0">
+                <svg class="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                </svg>
+              </div>
+              <div class="ml-3">
+                <p class="text-sm text-blue-700">
+                  <strong>30-Day Free Trial:</strong> Your card will be pre-authorized for $147 but you won't be charged during your trial period. 
+                  After 30 days, your subscription will automatically continue at $147/month unless cancelled.
+                </p>
+              </div>
+            </div>
+          `;
+          paymentElementDiv.appendChild(noticeDiv);
         }
-      });
 
-      // Clear loading state and mount
-      paymentElementDiv.innerHTML = '';
-      this.paymentElement.mount('#payment-element');
+        // Add a small delay to ensure the element is properly mounted
+        await new Promise(resolve => setTimeout(resolve, 100));
 
-      // Add pre-authorization notice for trial subscriptions
-      if (this.state.isPreauth) {
-        const noticeDiv = document.createElement('div');
-        noticeDiv.className = 'mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md';
-        noticeDiv.innerHTML = `
-          <div class="flex items-start">
-            <div class="flex-shrink-0">
-              <svg class="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
-              </svg>
+        console.log('Payment element created and mounted successfully');
+        return; // Success, exit the retry loop
+        
+      } catch (error) {
+        console.error(`Error creating payment element (attempt ${retryCount + 1}):`, error);
+        
+        if (retryCount === maxRetries) {
+          // Final attempt failed
+          paymentElementDiv.innerHTML = `
+            <div class="text-red-600 text-center py-4">
+              <p class="mb-2">Error loading payment form.</p>
+              <button onclick="location.reload()" class="text-blue-600 underline hover:text-blue-800">
+                Click here to refresh the page and try again
+              </button>
             </div>
-            <div class="ml-3">
-              <p class="text-sm text-blue-700">
-                <strong>30-Day Free Trial:</strong> Your card will be pre-authorized for $147 but you won't be charged during your trial period. 
-                After 30 days, your subscription will automatically continue at $147/month unless cancelled.
-              </p>
-            </div>
-          </div>
-        `;
-        paymentElementDiv.appendChild(noticeDiv);
+          `;
+          throw error;
+        }
+        
+        // Wait before retrying
+        await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
+        retryCount++;
       }
-
-      // Add a small delay to ensure the element is properly mounted
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      console.log('Payment element created and mounted successfully');
-    } catch (error) {
-      console.error('Error creating payment element:', error);
-      paymentElementDiv.innerHTML = '<div class="text-red-600 text-center py-4">Error loading payment form. Please refresh the page and try again.</div>';
-      throw error;
     }
   }
 
@@ -978,37 +1019,100 @@ class CheckoutApp {
       phone: this.elements['phone'].value.trim()
     };
 
-    // For pre-authorization (trial subscriptions), we need to confirm the payment intent
-    // but not capture it - this just validates the card
-    const result = await this.stripe.confirmPayment({
-      elements: this.stripeElements,
-      confirmParams: {
-        return_url: this.buildReturnUrl(),
-        payment_method_data: {
-          billing_details: billingDetails
+    try {
+      // For pre-authorization (trial subscriptions), we need to confirm the payment intent
+      // but not capture it - this just validates the card
+      const result = await this.stripe.confirmPayment({
+        elements: this.stripeElements,
+        confirmParams: {
+          return_url: this.buildReturnUrl(),
+          payment_method_data: {
+            billing_details: billingDetails
+          }
+        },
+        redirect: 'if_required'
+      });
+
+      if (result.error) {
+        // Handle specific error types
+        if (result.error.type === 'card_error') {
+          switch (result.error.code) {
+            case 'card_declined':
+              throw new Error('Your card was declined. Please try a different card or contact your bank.');
+            case 'insufficient_funds':
+              throw new Error('Your card has insufficient funds. Please try a different card.');
+            case 'expired_card':
+              throw new Error('Your card has expired. Please use a different card.');
+            case 'incorrect_cvc':
+              throw new Error('The security code (CVC) is incorrect. Please check and try again.');
+            case 'processing_error':
+              throw new Error('There was an error processing your card. Please try again or use a different card.');
+            default:
+              throw new Error(`Card error: ${result.error.message}`);
+          }
+        } else if (result.error.type === 'validation_error') {
+          throw new Error('Please check your card details and try again.');
+        } else {
+          throw new Error(result.error.message || 'Payment failed. Please try again.');
         }
-      },
-      redirect: 'if_required'
-    });
+      }
 
-    if (result.error) {
-      throw new Error(result.error.message);
-    }
+      // Check if payment method is prepaid and reject it
+      if (result.paymentIntent && result.paymentIntent.payment_method) {
+        try {
+          const paymentMethod = await this.stripe.paymentMethods.retrieve(result.paymentIntent.payment_method);
+          
+          if (paymentMethod.card && paymentMethod.card.funding === 'prepaid') {
+            throw new Error('Prepaid cards are not accepted for subscriptions. Please use a credit or debit card.');
+          }
+        } catch (pmError) {
+          console.warn('Could not verify payment method type:', pmError);
+          // Continue with payment if we can't verify the card type
+        }
+      }
 
-    // Check if payment method is prepaid and reject it
-    if (result.paymentIntent && result.paymentIntent.payment_method) {
-      const paymentMethod = await this.stripe.paymentMethods.retrieve(result.paymentIntent.payment_method);
+      // Check payment intent status
+      if (result.paymentIntent) {
+        const status = result.paymentIntent.status;
+        console.log('Payment intent status:', status);
+        
+        if (status === 'requires_payment_method') {
+          throw new Error('Payment failed. Please check your card details and try again.');
+        } else if (status === 'requires_confirmation') {
+          throw new Error('Payment requires additional confirmation. Please try again.');
+        } else if (status === 'requires_action') {
+          // This is normal for 3D Secure - the payment will be handled automatically
+          console.log('Payment requires action (3D Secure) - continuing...');
+        } else if (status === 'processing') {
+          console.log('Payment is processing...');
+        } else if (status === 'requires_capture') {
+          // This is the expected status for pre-authorization
+          console.log('Payment pre-authorized successfully');
+        } else if (status === 'succeeded') {
+          console.log('Payment succeeded');
+        } else if (status === 'canceled') {
+          throw new Error('Payment was canceled. Please try again.');
+        }
+      }
       
-      if (paymentMethod.card && paymentMethod.card.funding === 'prepaid') {
-        throw new Error('Prepaid cards are not accepted for subscriptions. Please use a credit or debit card.');
+      // Return success result - don't redirect here, let the calling code handle it
+      return {
+        success: true,
+        result: result
+      };
+      
+    } catch (error) {
+      console.error('Payment confirmation error:', error);
+      
+      // Re-throw the error with a user-friendly message
+      if (error.message.includes('Prepaid cards')) {
+        throw error; // Keep the specific prepaid card error
+      } else if (error.message.includes('Card error:') || error.message.includes('Payment failed')) {
+        throw error; // Keep specific card errors
+      } else {
+        throw new Error('Payment verification failed. Please check your card details and try again.');
       }
     }
-    
-    // Return success result - don't redirect here, let the calling code handle it
-    return {
-      success: true,
-      result: result
-    };
   }
 
   /**
