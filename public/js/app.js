@@ -154,7 +154,7 @@ class CheckoutApp {
 
     // Update pricing details
     const monthlyAmount = isAnnual ? 14700 / 12 : 14700; // $147.00 in cents
-    const annualAmount = isAnnual ? 147000 : 14700 * 12; // $1,470.00 in cents
+    const annualAmount = isAnnual ? 14700 : 14700; // $147.00 in cents
     
     this.elements['subtotal'].textContent = this.formatCurrency(monthlyAmount);
     this.elements['total-after-trial'].textContent = this.formatCurrency(monthlyAmount);
