@@ -8,7 +8,10 @@
     "dev": "node serve.js",
     "serve": "node serve.js",
     "server": "node server.js",
-    "test": "echo \"No tests specified\" && exit 0",
+    "test": "vitest --run",
+    "test:watch": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest --coverage",
     "lint": "echo \"No linter configured\" && exit 0",
     "build": "echo \"Build complete\"",
     "deploy": "echo \"Deploy script not configured\" && exit 0"
