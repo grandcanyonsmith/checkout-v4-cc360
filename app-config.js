@@ -15,7 +15,7 @@ if (typeof AppConfig === 'undefined') {
   
   // Stripe public key (safe to expose)
   stripe: {
-    publishableKey: 'pk_test_51LNznbBnnqL8bKFQsEYiA6EckkmudROvi9eTAb18peGJPZ3864HR4ZPvqFy368lot7taDY0eRGiWlO2kYciM55hX001Au8CPpa'
+    publishableKey: 'pk_live_51LNznbBnnqL8bKFQDpqXsQJ00WefQSSLMf2CZWr0sarinvaalkyY0BE7q7swLzIt49RSiCgBAP5uPHjU8fBNDsf0008MSXCQFU'
   },
   
   // Redirect URLs
