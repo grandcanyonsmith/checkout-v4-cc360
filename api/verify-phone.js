@@ -145,8 +145,7 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    // Format phone number for Twilio (add +1 if US number)
-    let formattedPhone = cleanPhone;
+    // Reuse formattedPhone from above, just ensure it's properly formatted for Twilio
     if (cleanPhone.length === 10) {
       formattedPhone = `+1${cleanPhone}`;
     } else if (cleanPhone.length === 11 && cleanPhone.startsWith('1')) {
