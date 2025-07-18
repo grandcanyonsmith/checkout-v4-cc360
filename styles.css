@@ -414,12 +414,197 @@ body {
 /* Responsive design improvements */
 @media (max-width: 640px) {
   .form-input {
-    font-size: 16px; /* Prevent zoom on iOS */
+    font-size: 16px; /* Prevents zoom on iOS */
+    padding: 0.75rem 0.875rem; /* Larger touch targets */
+    min-height: 48px; /* Better touch accessibility */
   }
   
   .btn-primary,
   .btn-secondary {
-    padding: 0.75rem 1rem; /* Larger touch targets on mobile */
+    padding: 0.875rem 1.25rem;
+    font-size: 1rem;
+    min-height: 48px; /* Better touch accessibility */
+    width: 100%; /* Full width on mobile */
+  }
+  
+  /* Improve form spacing on mobile */
+  .form-group {
+    margin-bottom: 1.25rem;
+  }
+  
+  /* Better modal positioning on mobile */
+  .modal-content {
+    margin: 1rem;
+    max-width: calc(100vw - 2rem);
+    max-height: calc(100vh - 2rem);
+  }
+  
+  /* Improve payment element on mobile */
+  #payment-element {
+    min-height: 200px;
+    padding: 0.75rem;
+  }
+  
+  /* Better grid layout for name fields on mobile */
+  .grid-cols-1.sm\\:grid-cols-2 {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  /* Improve header on mobile */
+  header .flex {
+    padding: 0.75rem 1rem;
+  }
+  
+  /* Better main content spacing on mobile */
+  main {
+    padding: 0 1rem;
+    gap: 1rem;
+  }
+  
+  /* Improve order summary on mobile */
+  section[aria-labelledby="summary-heading"] {
+    margin: 1rem 0;
+    padding: 1.5rem;
+  }
+  
+  /* Better form container on mobile */
+  #payment-form {
+    padding: 1.5rem;
+    margin: 0;
+    border-radius: 0.75rem;
+  }
+  
+  /* Improve loading overlay on mobile */
+  #loading-overlay {
+    padding: 1rem;
+  }
+  
+  /* Better error messages on mobile */
+  .error-message {
+    font-size: 0.875rem;
+    margin-top: 0.375rem;
+  }
+  
+  /* Improve validation indicators on mobile */
+  #email-validation-indicator,
+  #phone-validation-indicator {
+    right: 0.75rem;
+  }
+  
+  /* Better password requirements on mobile */
+  .password-requirement {
+    font-size: 0.75rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  /* Improve tooltips on mobile */
+  .tooltip {
+    display: none; /* Hide tooltips on mobile for better UX */
+  }
+}
+
+/* Tablet responsive styles */
+@media (min-width: 641px) and (max-width: 1024px) {
+  .form-input {
+    padding: 0.75rem 1rem;
+    min-height: 44px;
+  }
+  
+  .btn-primary,
+  .btn-secondary {
+    padding: 0.75rem 1.5rem;
+    min-height: 44px;
+  }
+  
+  /* Better grid layout for tablets */
+  .grid-cols-1.sm\\:grid-cols-2 {
+    gap: 1.5rem;
+  }
+  
+  /* Improve main content on tablets */
+  main {
+    gap: 2rem;
+    padding: 0 2rem;
+  }
+  
+  /* Better form container on tablets */
+  #payment-form {
+    padding: 2rem;
+  }
+}
+
+/* Large screen optimizations */
+@media (min-width: 1025px) {
+  .form-input {
+    padding: 0.75rem 1rem;
+    min-height: 44px;
+  }
+  
+  .btn-primary,
+  .btn-secondary {
+    padding: 0.75rem 2rem;
+    min-height: 44px;
+  }
+  
+  /* Better spacing on large screens */
+  main {
+    gap: 3rem;
+  }
+  
+  /* Improve form container on large screens */
+  #payment-form {
+    padding: 2.5rem;
+  }
+}
+
+/* Touch device optimizations */
+@media (hover: none) and (pointer: coarse) {
+  /* Increase touch targets */
+  .form-input,
+  .btn-primary,
+  .btn-secondary {
+    min-height: 48px;
+  }
+  
+  /* Better button spacing */
+  .btn-primary,
+  .btn-secondary {
+    margin: 0.25rem 0;
+  }
+  
+  /* Improve focus states for touch */
+  .form-input:focus {
+    transform: none; /* Remove transform on touch devices */
+  }
+  
+  /* Better modal interaction on touch */
+  .modal-content {
+    touch-action: pan-y;
+  }
+}
+
+/* Landscape mobile optimizations */
+@media (max-width: 640px) and (orientation: landscape) {
+  /* Reduce vertical spacing in landscape */
+  .form-group {
+    margin-bottom: 1rem;
+  }
+  
+  /* Smaller form container in landscape */
+  #payment-form {
+    padding: 1rem;
+  }
+  
+  /* Better header in landscape */
+  header .flex {
+    padding: 0.5rem 1rem;
+  }
+  
+  /* Improve order summary in landscape */
+  section[aria-labelledby="summary-heading"] {
+    padding: 1rem;
+    margin: 0.5rem 0;
   }
 }
 
