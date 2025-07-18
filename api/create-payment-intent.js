@@ -115,7 +115,7 @@ module.exports = async function handler(req, res) {
     // For trial subscriptions, we need to pre-authorize the card for the full amount
     // but not capture the payment - this ensures the card is valid
     if (subscription_type === 'monthly') {
-      // Create a Payment Intent for $147 pre-authorization (not captured)
+      // Create a Payment Intent for $147 pre-authorization
       const preAuthAmount = 14700; // $147.00 in cents
       
       const paymentIntent = await stripe.paymentIntents.create({
@@ -123,7 +123,6 @@ module.exports = async function handler(req, res) {
         amount: preAuthAmount,
         currency: 'usd',
         capture_method: 'manual', // Don't capture immediately
-        confirm: false, // Don't confirm immediately
         payment_method_types: ['card'],
         payment_method_options: {
           card: {
