@@ -295,6 +295,13 @@ class CheckoutApp {
     // For annual, we charge the full amount
     const amount = pricing.hasTrial ? 0 : pricing.amount;
 
+    console.log('Creating payment intent with:', {
+      amount,
+      currency: pricing.currency,
+      subscription_type: this.state.subscriptionType,
+      price_id: pricing.priceId
+    });
+
     const response = await fetch('/api/create-payment-intent', {
       method: 'POST',
       headers: {
@@ -314,6 +321,12 @@ class CheckoutApp {
     
     const data = await response.json();
     
+    console.log('Payment intent response:', {
+      status: response.status,
+      ok: response.ok,
+      data: data
+    });
+    
     if (!response.ok) {
       if (data.error === 'Customer already has an active subscription') {
         throw new Error('You already have an active subscription. Please contact support if you need to make changes to your account.');
@@ -328,6 +341,8 @@ class CheckoutApp {
     if (data.customer_id) {
       this.state.customerId = data.customer_id;
     }
+    
+    console.log('Payment intent created successfully, client secret type:', data.client_secret ? (data.client_secret.startsWith('seti_') ? 'SetupIntent' : 'PaymentIntent') : 'None');
     
     return data.client_secret;
   }
@@ -344,28 +359,53 @@ class CheckoutApp {
     // Clear any previous content
     paymentElementDiv.innerHTML = '';
 
-    // Create Stripe elements instance with the client secret (store in different variable to avoid conflict)
-    this.stripeElements = this.stripe.elements({
-      clientSecret: clientSecret,
-      appearance: { 
-        theme: 'stripe' 
-      }
-    });
+    // Show loading state
+    paymentElementDiv.innerHTML = '<div class="text-center py-4"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div><p class="mt-2 text-gray-600">Loading payment form...</p></div>';
 
-    // Create and mount the payment element
-    this.paymentElement = this.stripeElements.create('payment', {
-      fields: {
-        billingDetails: {
-          address: 'never', // We collect address separately
+    try {
+      // Create Stripe elements instance with the client secret
+      this.stripeElements = this.stripe.elements({
+        clientSecret: clientSecret,
+        appearance: { 
+          theme: 'stripe',
+          variables: {
+            colorPrimary: '#3b82f6',
+            colorBackground: '#ffffff',
+            colorText: '#1f2937',
+            colorDanger: '#ef4444',
+            fontFamily: 'system-ui, -apple-system, sans-serif',
+            spacingUnit: '4px',
+            borderRadius: '6px'
+          }
         }
-      },
-      paymentMethodOrder: ['card'], // Only allow cards, no other payment methods
-      terms: {
-        card: 'never' // Don't show card terms
-      }
-    });
+      });
 
-    this.paymentElement.mount('#payment-element');
+      // Create and mount the payment element
+      this.paymentElement = this.stripeElements.create('payment', {
+        fields: {
+          billingDetails: {
+            address: 'never', // We collect address separately
+          }
+        },
+        paymentMethodOrder: ['card'], // Only allow cards, no other payment methods
+        terms: {
+          card: 'never' // Don't show card terms
+        }
+      });
+
+      // Clear loading state and mount
+      paymentElementDiv.innerHTML = '';
+      this.paymentElement.mount('#payment-element');
+
+      // Add a small delay to ensure the element is properly mounted
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      console.log('Payment element created and mounted successfully');
+    } catch (error) {
+      console.error('Error creating payment element:', error);
+      paymentElementDiv.innerHTML = '<div class="text-red-600 text-center py-4">Error loading payment form. Please refresh the page and try again.</div>';
+      throw error;
+    }
   }
 
   /**
