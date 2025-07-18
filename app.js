@@ -305,16 +305,30 @@ class CheckoutApp {
         currency: pricing.currency,
         subscription_type: this.state.subscriptionType,
         price_id: pricing.priceId,
-        customer_id: this.state.customerId,
-        subscription_id: this.state.sessionId // sessionId stores the subscriptionId
+        // Remove customer_id and subscription_id - these will be created after payment
+        email: this.elements['email'].value.trim(),
+        name: `${this.elements['firstName'].value.trim()} ${this.elements['lastName'].value.trim()}`,
+        phone: this.elements['phone'].value.trim()
       })
     });
     
-    if (!response.ok) {
-      throw new Error(`Failed to create payment intent: ${response.status}`);
-    }
-
     const data = await response.json();
+    
+    if (!response.ok) {
+      if (data.error === 'Customer already has an active subscription') {
+        throw new Error('You already have an active subscription. Please contact support if you need to make changes to your account.');
+      } else if (data.error === 'Customer has a pending subscription that needs to be completed first') {
+        throw new Error('You have a pending subscription that needs to be completed. Please check your email for payment instructions or contact support.');
+      } else {
+        throw new Error(data.error || `Failed to create payment intent: ${response.status}`);
+      }
+    }
+    
+    // Store the customer_id from the response
+    if (data.customer_id) {
+      this.state.customerId = data.customer_id;
+    }
+    
     return data.client_secret;
   }
 
@@ -344,6 +358,10 @@ class CheckoutApp {
         billingDetails: {
           address: 'never', // We collect address separately
         }
+      },
+      paymentMethodOrder: ['card'], // Only allow cards, no other payment methods
+      terms: {
+        card: 'never' // Don't show card terms
       }
     });
 
@@ -390,17 +408,29 @@ class CheckoutApp {
         return;
       }
 
-      // Create customer and subscription
-      await this.createCustomerAndSubscription();
+      // Ensure Stripe is initialized
+      if (!this.stripe) {
+        throw new Error('Stripe not initialized');
+      }
 
-      // Create payment intent and get client secret
+      // Create payment intent first (without creating subscription)
       const clientSecret = await this.createPaymentIntent();
       
       // Create payment element with the client secret
       await this.createPaymentElement(clientSecret);
 
       // Confirm payment
-      await this.confirmPayment(clientSecret);
+      const paymentResult = await this.confirmPayment(clientSecret);
+
+      // Only create customer and subscription AFTER successful payment
+      if (paymentResult.success) {
+        await this.createCustomerAndSubscription();
+        
+        // Redirect to success page
+        window.location.href = this.buildReturnUrl();
+      } else {
+        throw new Error('Payment failed');
+      }
 
     } catch (error) {
       console.error('Submission error:', error);
@@ -426,15 +456,23 @@ class CheckoutApp {
         name: `${this.elements['firstName'].value.trim()} ${this.elements['lastName'].value.trim()}`,
         phone: this.elements['phone'].value.trim(),
         subscriptionType: this.state.subscriptionType,
-        priceId: config ? config.priceId : pricing.priceId
+        priceId: config ? config.priceId : pricing.priceId,
+        customerId: this.state.customerId // Pass the customer ID from payment intent
       })
     });
 
+    const data = await response.json();
+
     if (!response.ok) {
-      throw new Error('Failed to create subscription');
+      if (data.error === 'Customer already has an active subscription') {
+        throw new Error('You already have an active subscription. Please contact support if you need to make changes to your account.');
+      } else if (data.error === 'Customer has a pending subscription that needs to be completed first') {
+        throw new Error('You have a pending subscription that needs to be completed. Please check your email for payment instructions or contact support.');
+      } else {
+        throw new Error(data.error || 'Failed to create subscription');
+      }
     }
 
-    const data = await response.json();
     this.state.customerId = data.customerId;
     this.state.sessionId = data.subscriptionId;
   }
@@ -906,11 +944,30 @@ class CheckoutApp {
     if (result.error) {
       throw new Error(result.error.message);
     }
-    
-    // If redirect is not required, manually redirect to success page
-    if (!result.error) {
-      window.location.href = this.buildReturnUrl();
+
+    // Check if payment method is prepaid and reject it
+    if (result.paymentIntent && result.paymentIntent.payment_method) {
+      const paymentMethod = await this.stripe.paymentMethods.retrieve(result.paymentIntent.payment_method);
+      
+      if (paymentMethod.card && paymentMethod.card.funding === 'prepaid') {
+        throw new Error('Prepaid cards are not accepted for subscriptions. Please use a credit or debit card.');
+      }
     }
+
+    // Check if setup intent payment method is prepaid
+    if (result.setupIntent && result.setupIntent.payment_method) {
+      const paymentMethod = await this.stripe.paymentMethods.retrieve(result.setupIntent.payment_method);
+      
+      if (paymentMethod.card && paymentMethod.card.funding === 'prepaid') {
+        throw new Error('Prepaid cards are not accepted for subscriptions. Please use a credit or debit card.');
+      }
+    }
+    
+    // Return success result - don't redirect here, let the calling code handle it
+    return {
+      success: true,
+      result: result
+    };
   }
 
   /**
@@ -1312,81 +1369,4 @@ class ErrorReporter {
   }
 
   static captureMessage(message, level = 'info') {
-    console.log(`[${level.toUpperCase()}] ${message}`);
-    
-    // Send to error reporting service
-    // if (window.Sentry) {
-    //   Sentry.captureMessage(message, level);
-    // }
-  }
-}
-
-// Initialize application when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
-  PerformanceMonitor.mark('app-init-start');
-  
-  try {
-    // Handle route changes
-    if (window.RouteConfig) {
-      window.RouteConfig.handleRouteChange();
-    }
-    
-    // Initialize analytics
-    Analytics.trackFormStart();
-    
-    // Initialize the checkout app
-    window.checkoutApp = new CheckoutApp();
-    
-    // Ensure identity verification modal is hidden on load
-    const modal = document.getElementById('identity-verification-modal');
-    if (modal) {
-      console.log('Checking modal state on init:', {
-        hasHiddenClass: modal.classList.contains('hidden'),
-        computedDisplay: window.getComputedStyle(modal).display
-      });
-      if (!modal.classList.contains('hidden')) {
-        console.log('Modal was visible on load, hiding it');
-        modal.classList.add('hidden');
-      }
-    }
-    
-    PerformanceMonitor.mark('app-init-end');
-    PerformanceMonitor.measure('app-initialization', 'app-init-start', 'app-init-end');
-    
-  } catch (error) {
-    ErrorReporter.captureError(error, { context: 'app-initialization' });
-    document.body.innerHTML = `
-      <div class="min-h-screen flex items-center justify-center bg-gray-50">
-        <div class="text-center">
-          <h1 class="text-2xl font-bold text-gray-900 mb-4">Something went wrong</h1>
-          <p class="text-gray-600 mb-4">We're having trouble loading the checkout page.</p>
-          <button onclick="location.reload()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
-            Try Again
-          </button>
-        </div>
-      </div>
-    `;
-  }
-});
-
-// Handle page visibility changes
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') {
-    // Page became visible - refresh data if needed
-    if (window.checkoutApp) {
-      window.checkoutApp.loadAutoSavedData();
-    }
-  }
-});
-
-// Handle beforeunload to save form data
-window.addEventListener('beforeunload', () => {
-  if (window.checkoutApp) {
-    window.checkoutApp.autoSaveForm();
-  }
-});
-
-// Export for testing (only in Node.js environment)
-if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
-  module.exports = { CheckoutApp, Analytics, PerformanceMonitor, ErrorReporter };
-} 
+    console.log(`

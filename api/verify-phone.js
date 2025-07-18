@@ -31,20 +31,6 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    // Twilio configuration from environment variables
-    const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
-    const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
-    
-    if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN) {
-      console.warn('Twilio credentials not configured, using basic validation');
-      return res.status(200).json({
-        success: true,
-        isValid: true,
-        validationMethod: 'basic_fallback',
-        risk: 'unknown'
-      });
-    }
-
     // Clean phone number (remove all non-digits)
     const cleanPhone = phone.replace(/\D/g, '');
     
@@ -56,6 +42,106 @@ module.exports = async function handler(req, res) {
         validationMethod: 'basic',
         risk: 'high',
         reason: 'Phone number too short'
+      });
+    }
+
+    // Format phone number for Lambda (add +1 if US number)
+    let formattedPhone = cleanPhone;
+    if (cleanPhone.length === 10) {
+      formattedPhone = `+1${cleanPhone}`;
+    } else if (cleanPhone.length === 11 && cleanPhone.startsWith('1')) {
+      formattedPhone = `+${cleanPhone}`;
+    } else if (!cleanPhone.startsWith('+')) {
+      formattedPhone = `+${cleanPhone}`;
+    }
+
+    // Call Lambda endpoint for Twilio Identity Match
+    try {
+      const lambdaResponse = await fetch('https://6md7xnb5zegjqwkos5lpihtkoy0xpnki.lambda-url.us-west-2.on.aws/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          identity_phone_number: formattedPhone,
+          first_name: firstName || '',
+          last_name: lastName || ''
+        })
+      });
+      
+      if (lambdaResponse.ok) {
+        const lambdaData = await lambdaResponse.json();
+        
+        if (lambdaData.success) {
+          // Process Identity Match results
+          let risk = 'low';
+          let reason = null;
+          let isValid = true;
+          let requiresVerification = false;
+          const summaryScore = lambdaData.summary_score || 0;
+          
+          // Determine risk and validity based on summary score
+          if (summaryScore >= 80) {
+            risk = 'low';
+            reason = 'Strong identity match';
+            isValid = true;
+            requiresVerification = false;
+          } else if (summaryScore >= 40) {
+            risk = 'medium';
+            reason = 'Partial identity match';
+            isValid = true;
+            requiresVerification = false;
+          } else if (summaryScore > 20) {
+            risk = 'high';
+            reason = 'Weak identity match';
+            isValid = true;
+            requiresVerification = false;
+          } else {
+            // summaryScore <= 20 (including 20) requires verification
+            risk = 'high';
+            reason = 'Name does not match phone number. Please verify your identity.';
+            isValid = false;
+            requiresVerification = true;
+          }
+          
+          return res.status(200).json({
+            success: true,
+            isValid,
+            phoneNumber: formattedPhone,
+            countryCode: 'US',
+            risk,
+            reason,
+            requiresVerification,
+            identityMatch: {
+              first_name_match: lambdaData.first_name_match,
+              last_name_match: lambdaData.last_name_match,
+              summary_score: lambdaData.summary_score
+            },
+            validationMethod: 'twilio_identity_match_lambda'
+          });
+        } else {
+          console.warn('Lambda returned error:', lambdaData.error);
+        }
+      } else {
+        console.warn('Lambda API error:', lambdaResponse.status);
+        const errorText = await lambdaResponse.text();
+        console.error('Error details:', errorText);
+      }
+    } catch (error) {
+      console.error('Lambda API error:', error);
+    }
+
+    // Fallback to basic Twilio Lookup if Lambda fails
+    const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
+    const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
+    
+    if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN) {
+      console.warn('Twilio credentials not configured, using basic validation');
+      return res.status(200).json({
+        success: true,
+        isValid: true,
+        validationMethod: 'basic_fallback',
+        risk: 'unknown'
       });
     }
 

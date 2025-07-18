@@ -24,18 +24,89 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const { email, name, phone, subscriptionType, priceId } = req.body;
+    const { email, name, phone, subscriptionType, priceId, customerId } = req.body;
 
-    // Create customer
-    const customer = await stripe.customers.create({
-      email,
-      name,
-      phone,
-      metadata: {
-        source: 'checkout_page',
-        subscription_type: subscriptionType
+    let customer;
+
+    // If customerId is provided, use existing customer, otherwise create new one
+    if (customerId) {
+      customer = await stripe.customers.retrieve(customerId);
+      
+      // Update customer information if needed
+      await stripe.customers.update(customerId, {
+        email,
+        name,
+        phone,
+        metadata: {
+          source: 'checkout_page',
+          subscription_type: subscriptionType
+        }
+      });
+    } else {
+      // Check if customer already exists by email
+      const existingCustomers = await stripe.customers.list({
+        email: email,
+        limit: 1
+      });
+
+      if (existingCustomers.data.length > 0) {
+        customer = existingCustomers.data[0];
+        
+        // Update customer information
+        await stripe.customers.update(customer.id, {
+          name,
+          phone,
+          metadata: {
+            source: 'checkout_page',
+            subscription_type: subscriptionType
+          }
+        });
+      } else {
+        // Create new customer
+        customer = await stripe.customers.create({
+          email,
+          name,
+          phone,
+          metadata: {
+            source: 'checkout_page',
+            subscription_type: subscriptionType
+          }
+        });
       }
+    }
+
+    // Check for existing active subscriptions
+    const existingSubscriptions = await stripe.subscriptions.list({
+      customer: customer.id,
+      status: 'active',
+      limit: 100
     });
+
+    // Check if customer already has an active subscription
+    if (existingSubscriptions.data.length > 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Customer already has an active subscription',
+        existingSubscriptionId: existingSubscriptions.data[0].id,
+        subscriptionStatus: existingSubscriptions.data[0].status
+      });
+    }
+
+    // Check for pending subscriptions (incomplete, past_due, etc.)
+    const pendingSubscriptions = await stripe.subscriptions.list({
+      customer: customer.id,
+      status: 'incomplete',
+      limit: 100
+    });
+
+    if (pendingSubscriptions.data.length > 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Customer has a pending subscription that needs to be completed first',
+        pendingSubscriptionId: pendingSubscriptions.data[0].id,
+        subscriptionStatus: pendingSubscriptions.data[0].status
+      });
+    }
 
     // Create subscription
     const subscriptionParams = {
