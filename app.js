@@ -299,13 +299,7 @@ class CheckoutApp {
   async createPaymentIntent() {
     const pricing = this.config.pricing[this.state.subscriptionType];
     
-    // For monthly with trial, we don't charge anything initially
-    // For annual, we charge the full amount
-    const amount = pricing.hasTrial ? 0 : pricing.amount;
-
     console.log('Creating payment intent with:', {
-      amount,
-      currency: pricing.currency,
       subscription_type: this.state.subscriptionType,
       price_id: pricing.priceId
     });
@@ -316,11 +310,8 @@ class CheckoutApp {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        amount: amount,
-        currency: pricing.currency,
         subscription_type: this.state.subscriptionType,
         price_id: pricing.priceId,
-        // Remove customer_id and subscription_id - these will be created after payment
         email: this.elements['email'].value.trim(),
         name: `${this.elements['firstName'].value.trim()} ${this.elements['lastName'].value.trim()}`,
         phone: this.elements['phone'].value.trim()
@@ -345,9 +336,13 @@ class CheckoutApp {
       }
     }
     
-    // Store the customer_id from the response
+    // Store the customer_id and preauth info from the response
     if (data.customer_id) {
       this.state.customerId = data.customer_id;
+    }
+    if (data.is_preauth) {
+      this.state.isPreauth = true;
+      this.state.preAuthAmount = data.preauth_amount;
     }
     
     console.log('Payment intent created successfully, client secret type:', data.client_secret ? (data.client_secret.startsWith('seti_') ? 'SetupIntent' : 'PaymentIntent') : 'None');
@@ -404,6 +399,28 @@ class CheckoutApp {
       // Clear loading state and mount
       paymentElementDiv.innerHTML = '';
       this.paymentElement.mount('#payment-element');
+
+      // Add pre-authorization notice for trial subscriptions
+      if (this.state.isPreauth) {
+        const noticeDiv = document.createElement('div');
+        noticeDiv.className = 'mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md';
+        noticeDiv.innerHTML = `
+          <div class="flex items-start">
+            <div class="flex-shrink-0">
+              <svg class="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+              </svg>
+            </div>
+            <div class="ml-3">
+              <p class="text-sm text-blue-700">
+                <strong>30-Day Free Trial:</strong> Your card will be pre-authorized for $147 but you won't be charged during your trial period. 
+                After 30 days, your subscription will automatically continue at $147/month unless cancelled.
+              </p>
+            </div>
+          </div>
+        `;
+        paymentElementDiv.appendChild(noticeDiv);
+      }
 
       // Add a small delay to ensure the element is properly mounted
       await new Promise(resolve => setTimeout(resolve, 100));
@@ -954,9 +971,6 @@ class CheckoutApp {
    * Confirm payment with Stripe
    */
   async confirmPayment(clientSecret) {
-    // Determine if this is a SetupIntent or PaymentIntent based on the prefix
-    const isSetupIntent = clientSecret.startsWith('seti_');
-    
     // Prepare billing details
     const billingDetails = {
       name: `${this.elements['firstName'].value.trim()} ${this.elements['lastName'].value.trim()}`,
@@ -964,33 +978,18 @@ class CheckoutApp {
       phone: this.elements['phone'].value.trim()
     };
 
-    let result;
-    
-    if (isSetupIntent) {
-      // For trial subscriptions (SetupIntent)
-      result = await this.stripe.confirmSetup({
-        elements: this.stripeElements,
-        confirmParams: {
-          return_url: this.buildReturnUrl(),
-          payment_method_data: {
-            billing_details: billingDetails
-          }
-        },
-        redirect: 'if_required'
-      });
-    } else {
-      // For paid subscriptions (PaymentIntent)
-      result = await this.stripe.confirmPayment({
-        elements: this.stripeElements,
-        confirmParams: {
-          return_url: this.buildReturnUrl(),
-          payment_method_data: {
-            billing_details: billingDetails
-          }
-        },
-        redirect: 'if_required'
-      });
-    }
+    // For pre-authorization (trial subscriptions), we need to confirm the payment intent
+    // but not capture it - this just validates the card
+    const result = await this.stripe.confirmPayment({
+      elements: this.stripeElements,
+      confirmParams: {
+        return_url: this.buildReturnUrl(),
+        payment_method_data: {
+          billing_details: billingDetails
+        }
+      },
+      redirect: 'if_required'
+    });
 
     if (result.error) {
       throw new Error(result.error.message);
@@ -999,15 +998,6 @@ class CheckoutApp {
     // Check if payment method is prepaid and reject it
     if (result.paymentIntent && result.paymentIntent.payment_method) {
       const paymentMethod = await this.stripe.paymentMethods.retrieve(result.paymentIntent.payment_method);
-      
-      if (paymentMethod.card && paymentMethod.card.funding === 'prepaid') {
-        throw new Error('Prepaid cards are not accepted for subscriptions. Please use a credit or debit card.');
-      }
-    }
-
-    // Check if setup intent payment method is prepaid
-    if (result.setupIntent && result.setupIntent.payment_method) {
-      const paymentMethod = await this.stripe.paymentMethods.retrieve(result.setupIntent.payment_method);
       
       if (paymentMethod.card && paymentMethod.card.funding === 'prepaid') {
         throw new Error('Prepaid cards are not accepted for subscriptions. Please use a credit or debit card.');

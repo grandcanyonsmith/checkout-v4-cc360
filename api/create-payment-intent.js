@@ -112,10 +112,18 @@ module.exports = async function handler(req, res) {
       }
     }
 
-    // For trial subscriptions (amount = 0), use Setup Intent instead of Payment Intent
-    if (amount === 0) {
-      const setupIntent = await stripe.setupIntents.create({
+    // For trial subscriptions, we need to pre-authorize the card for the full amount
+    // but not capture the payment - this ensures the card is valid
+    if (subscription_type === 'monthly') {
+      // Create a Payment Intent for $147 pre-authorization (not captured)
+      const preAuthAmount = 14700; // $147.00 in cents
+      
+      const paymentIntent = await stripe.paymentIntents.create({
         customer: customerId,
+        amount: preAuthAmount,
+        currency: 'usd',
+        capture_method: 'manual', // Don't capture immediately
+        confirm: false, // Don't confirm immediately
         payment_method_types: ['card'],
         payment_method_options: {
           card: {
@@ -125,16 +133,21 @@ module.exports = async function handler(req, res) {
         metadata: {
           subscription_type,
           price_id,
-          subscription_id: subscription_id || null
+          subscription_id: subscription_id || null,
+          is_preauth: 'true',
+          trial_subscription: 'true'
         }
       });
 
       res.json({
         success: true,
-        client_secret: setupIntent.client_secret,
-        customer_id: customerId
+        client_secret: paymentIntent.client_secret,
+        customer_id: customerId,
+        is_preauth: true,
+        preauth_amount: preAuthAmount
       });
     } else {
+      // For annual subscriptions, charge the full amount immediately
       const paymentIntent = await stripe.paymentIntents.create({
         customer: customerId,
         amount,
