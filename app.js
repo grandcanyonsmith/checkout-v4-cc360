@@ -543,7 +543,34 @@ class CheckoutApp {
 
     } catch (error) {
       console.error('Submission error:', error);
-      this.showError('An error occurred while processing your request. Please try again.');
+      
+      // Show specific error message to user
+      let errorMessage = error.message;
+      
+      // Handle specific payment errors
+      if (error.message.includes('CVC') || error.message.includes('security code')) {
+        errorMessage = 'The security code (CVC) is incorrect. Please check and try again.';
+      } else if (error.message.includes('card was declined')) {
+        errorMessage = 'Your card was declined. Please try a different card or contact your bank.';
+      } else if (error.message.includes('insufficient funds')) {
+        errorMessage = 'Your card has insufficient funds. Please try a different card.';
+      } else if (error.message.includes('expired')) {
+        errorMessage = 'Your card has expired. Please use a different card.';
+      } else if (error.message.includes('Prepaid cards')) {
+        errorMessage = 'Prepaid cards are not accepted for subscriptions. Please use a credit or debit card.';
+      } else if (error.message.includes('Payment verification failed')) {
+        errorMessage = 'Payment verification failed. Please check your card details and try again.';
+      } else if (error.message.includes('Authentication error')) {
+        errorMessage = 'Authentication error. Please refresh the page and try again.';
+      } else if (error.message.includes('Network error')) {
+        errorMessage = 'Network error. Please check your connection and try again.';
+      } else if (error.message.includes('Server error')) {
+        errorMessage = 'Server error. Please try again in a few moments.';
+      } else if (error.message.includes('Too many requests')) {
+        errorMessage = 'Too many requests. Please wait a moment and try again.';
+      }
+      
+      this.showError(errorMessage);
       this.setSubmitting(false);
     }
   }
