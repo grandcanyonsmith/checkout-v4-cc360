@@ -58,14 +58,17 @@ class VercelAnalytics {
     try {
       console.log('⚡ Loading Vercel Speed Insights...');
       
-      // Use CDN import for speed insights
-      const { injectSpeedInsights } = await import('https://cdn.jsdelivr.net/npm/@vercel/speed-insights@1.0.2/dist/index.js');
+      // Use CDN import for speed insights with proper error handling
+      const speedInsightsModule = await import('https://cdn.jsdelivr.net/npm/@vercel/speed-insights@1.0.2/dist/index.js');
       
-      // Inject speed insights
-      injectSpeedInsights();
-      this.speedInsightsLoaded = true;
-      
-      console.log('✅ Vercel Speed Insights loaded successfully');
+      if (speedInsightsModule && speedInsightsModule.injectSpeedInsights) {
+        // Inject speed insights
+        speedInsightsModule.injectSpeedInsights();
+        this.speedInsightsLoaded = true;
+        console.log('✅ Vercel Speed Insights loaded successfully');
+      } else {
+        throw new Error('Speed Insights module not found');
+      }
     } catch (error) {
       console.error('❌ Failed to load Vercel Speed Insights:', error);
     }
@@ -156,18 +159,20 @@ class VercelAnalytics {
   }
 }
 
-// Initialize analytics
-const vercelAnalytics = new VercelAnalytics();
-
-// Export for use in other scripts
-if (typeof window !== 'undefined') {
-  window.VercelAnalytics = vercelAnalytics;
+// Initialize analytics only if not already initialized
+if (typeof window.VercelAnalytics === 'undefined') {
+  const vercelAnalytics = new VercelAnalytics();
   
-  // Add debug method to window for easy testing
-  window.debugAnalytics = () => {
-    console.log('🔍 Analytics Status:', vercelAnalytics.getStatus());
-    return vercelAnalytics.getStatus();
-  };
+  // Export for use in other scripts
+  if (typeof window !== 'undefined') {
+    window.VercelAnalytics = vercelAnalytics;
+    
+    // Add debug method to window for easy testing
+    window.debugAnalytics = () => {
+      console.log('🔍 Analytics Status:', vercelAnalytics.getStatus());
+      return vercelAnalytics.getStatus();
+    };
+  }
 }
 
 console.log('🎯 VercelAnalytics class ready');

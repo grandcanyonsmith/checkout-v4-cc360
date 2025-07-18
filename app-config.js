@@ -3,7 +3,9 @@
  * This file is exposed to the browser, so don't include sensitive data
  */
 
-const AppConfig = {
+// Check if AppConfig already exists to prevent duplicate declaration
+if (typeof AppConfig === 'undefined') {
+  window.AppConfig = {
   // API endpoints
   api: {
     createSubscription: '/api/create-subscription',
@@ -13,7 +15,7 @@ const AppConfig = {
   
   // Stripe public key (safe to expose)
   stripe: {
-    publishableKey: 'pk_test_51RMwm4B4vAF3NRPR7nDhjgYs9YLJlacA7pAtk2fBvI4AIMGXVtiIiV3BSv1lR6w5GdJ94sAiL0SagTJ8YVgP4EZQ00CMe6mQ7q'
+    publishableKey: 'pk_test_51LNznbBnnqL8bKFQsEYiA6EckkmudROvi9eTAb18peGJPZ3864HR4ZPvqFy368lot7taDY0eRGiWlO2kYciM55hX001Au8CPpa'
   },
   
   // Redirect URLs
@@ -66,19 +68,20 @@ const AppConfig = {
   // Environment detection
   isDevelopment: window.location.hostname === 'localhost',
   isProduction: window.location.hostname !== 'localhost'
-};
+  };
 
-// Freeze configuration to prevent modifications
-Object.freeze(AppConfig);
-Object.freeze(AppConfig.api);
-Object.freeze(AppConfig.stripe);
-Object.freeze(AppConfig.urls);
-Object.freeze(AppConfig.ui);
-Object.freeze(AppConfig.features);
-Object.freeze(AppConfig.validation);
-Object.freeze(AppConfig.pricing);
+  // Freeze configuration to prevent modifications
+  Object.freeze(window.AppConfig);
+  Object.freeze(window.AppConfig.api);
+  Object.freeze(window.AppConfig.stripe);
+  Object.freeze(window.AppConfig.urls);
+  Object.freeze(window.AppConfig.ui);
+  Object.freeze(window.AppConfig.features);
+  Object.freeze(window.AppConfig.validation);
+  Object.freeze(window.AppConfig.pricing);
 
-// Export for use in other scripts
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = AppConfig;
+  // Export for use in other scripts
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = window.AppConfig;
+  }
 } 
