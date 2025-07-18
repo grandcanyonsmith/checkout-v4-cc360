@@ -16,6 +16,7 @@ const STATIC_FILES = [
   'app-config.js',
   'routes.js',
   'email-validator.js',
+  'phone-validator.js',
   'sanitizer.js',
   'app-logger.js',
   'vercel-analytics.js'
