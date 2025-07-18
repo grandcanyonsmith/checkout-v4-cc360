@@ -33,6 +33,10 @@
   
   <!-- Scripts will be loaded at the bottom of the page -->
   
+  <!-- Validation Scripts -->
+  <script src="email-validator.js"></script>
+  <script src="phone-validator.js"></script>
+  
   <!-- Favicon -->
   <link rel="icon" type="image/x-icon" href="https://cc360-pages.s3.us-west-2.amazonaws.com/course-creator-360-logo.webp" />
 </head>
@@ -268,14 +272,25 @@
             <label for="email" class="block text-sm font-medium text-gray-700 mb-2">
               Email address <span class="text-red-500">*</span>
             </label>
-            <input
-              id="email"
-              type="email"
-              required
-              placeholder="you@example.com"
-              autocomplete="email"
-              class="form-input"
-            />
+            <div class="relative">
+              <input
+                id="email"
+                type="email"
+                required
+                placeholder="you@example.com"
+                autocomplete="email"
+                class="form-input pr-10"
+              />
+              <!-- Email validation indicator -->
+              <div id="email-validation-indicator" class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                <svg id="email-check" class="hidden h-5 w-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                </svg>
+                <svg id="email-x" class="hidden h-5 w-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                </svg>
+              </div>
+            </div>
             <div class="error-message" id="email-error"></div>
           </div>
 
@@ -284,14 +299,87 @@
             <label for="phone" class="block text-sm font-medium text-gray-700 mb-2">
               Phone number <span class="text-red-500">*</span>
             </label>
-            <input
-              id="phone"
-              type="tel"
-              required
-              placeholder="(555) 123-4567"
-              autocomplete="tel"
-              class="form-input"
-            />
+            <div class="relative">
+              <input
+                id="phone"
+                type="tel"
+                required
+                placeholder="(555) 123-4567"
+                autocomplete="tel"
+                class="form-input pr-10"
+              />
+              <!-- Phone validation indicator -->
+              <div id="phone-validation-indicator" class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                <svg id="phone-check" class="hidden h-5 w-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                </svg>
+                <svg id="phone-x" class="hidden h-5 w-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                </svg>
+              </div>
+            </div>
+            <div class="error-message" id="phone-error"></div>
+            
+            <!-- Identity Verification Modal -->
+            <div id="identity-verification-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+              <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                <div class="mt-3 text-center">
+                  <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-yellow-100">
+                    <svg class="h-6 w-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                    </svg>
+                  </div>
+                  <h3 class="text-lg leading-6 font-medium text-gray-900 mt-4">Identity Verification Required</h3>
+                  <div class="mt-2 px-7 py-3">
+                    <p class="text-sm text-gray-500 mb-4">
+                      We need to verify your identity. Please enter the verification code sent to your phone.
+                    </p>
+                    
+                    <!-- Verification Code Input -->
+                    <div class="mb-4">
+                      <label for="verification-code" class="block text-sm font-medium text-gray-700 mb-2">
+                        Verification Code
+                      </label>
+                      <input
+                        id="verification-code"
+                        type="text"
+                        maxlength="6"
+                        placeholder="Enter 6-digit code"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                    </div>
+                    
+                    <!-- Status Messages -->
+                    <div id="verification-status" class="hidden mb-4 p-3 rounded-md">
+                      <p id="verification-message" class="text-sm"></p>
+                    </div>
+                    
+                    <!-- Action Buttons -->
+                    <div class="flex space-x-3">
+                      <button
+                        id="send-verification-code"
+                        class="flex-1 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                      >
+                        Send Code
+                      </button>
+                      <button
+                        id="verify-code"
+                        class="flex-1 bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+                      >
+                        Verify
+                      </button>
+                    </div>
+                    
+                    <button
+                      id="close-verification-modal"
+                      class="mt-4 w-full bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
             <div class="error-message" id="phone-error"></div>
           </div>
 

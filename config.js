@@ -38,6 +38,13 @@ const config = {
     enabled: !!process.env.MAILGUN_API_KEY
   },
 
+  // Twilio Configuration
+  twilio: {
+    accountSid: process.env.TWILIO_ACCOUNT_SID,
+    authToken: process.env.TWILIO_AUTH_TOKEN,
+    enabled: !!process.env.TWILIO_ACCOUNT_SID
+  },
+
   // Application URLs
   urls: {
     redirectUrl: process.env.REDIRECT_URL || 'https://link.coursecreator360.com/widget/bookings/cc360/onboarding',

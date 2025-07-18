@@ -16,7 +16,7 @@ class CheckoutApp {
       },
       pricing: {
         monthly: {
-          priceId: "price_1QPF6eBnnqL8bKFQGvC5BUlm",
+          priceId: "price_1Rm28YBnnqL8bKFQEnVUozqo",
           amount: 14700, // $147.00 in cents
           currency: "usd",
           interval: "month",
@@ -58,8 +58,16 @@ class CheckoutApp {
     // DOM elements cache
     this.elements = {};
 
-    // Initialize email validator
+    // Initialize validators
     this.emailValidator = new EmailValidator();
+    this.phoneValidator = new PhoneValidator();
+    
+    // Identity verification state
+    this.identityVerification = {
+      isRequired: false,
+      isVerified: false,
+      phoneNumber: null
+    };
 
     // Initialize the application
     this.init();
@@ -215,8 +223,14 @@ class CheckoutApp {
     // Password toggle
     this.elements['togglePassword'].addEventListener('click', this.togglePassword.bind(this));
 
-    // Password validation
-          this.elements['password'].addEventListener('input', this.debounce(this.validatePassword.bind(this), this.config.ui.debounceDelay));
+    // Password validation with post-validation trigger
+    this.elements['password'].addEventListener('input', this.debounce(this.validatePassword.bind(this), this.config.ui.debounceDelay));
+    this.elements['password'].addEventListener('blur', () => {
+      // After password validation, trigger email and phone validation
+      if (this.isValidPassword()) {
+        this.validateEmailAndPhoneAfterPassword();
+      }
+    });
 
     // Form field validation
     ['firstName', 'lastName', 'email', 'phone'].forEach(field => {
@@ -463,6 +477,8 @@ class CheckoutApp {
     // Required field validation
     if (!value) {
       this.showFieldError(fieldName, `${this.getFieldLabel(fieldName)} is required`);
+      // Clear visual indicator for empty fields
+      this.clearFieldIndicator(fieldName);
       return false;
     }
 
@@ -475,21 +491,48 @@ class CheckoutApp {
         
         if (formatted.type === 'error') {
           this.showFieldError(fieldName, formatted.message);
+          this.showFieldIndicator(fieldName, false);
           return false;
         } else if (formatted.type === 'warning') {
           this.showFieldError(fieldName, formatted.message, 'warning');
+          this.showFieldIndicator(fieldName, false);
         } else if (formatted.type === 'info' && formatted.suggestion) {
           this.showFieldError(fieldName, `${formatted.message} <button type="button" class="ml-1 text-blue-700 underline text-xs" onclick="document.getElementById('email').value = '${formatted.suggestion}'; document.getElementById('email').dispatchEvent(new Event('input'));">Use suggestion</button>`, 'info');
+          this.showFieldIndicator(fieldName, false);
         } else {
           this.clearFieldError(fieldName);
+          this.showFieldIndicator(fieldName, true);
         }
         break;
 
       case 'phone':
-        const cleanPhone = value.replace(/\D/g, '');
-        if (!this.config.validation.phoneRegex.test(cleanPhone)) {
-          this.showFieldError(fieldName, 'Please enter a valid phone number');
+        // Use enhanced phone validator with Twilio API
+        const firstName = this.elements['firstName']?.value?.trim() || '';
+        const lastName = this.elements['lastName']?.value?.trim() || '';
+        const phoneValidationResult = await this.phoneValidator.validateWithAPI(value, {
+          firstName,
+          lastName
+        });
+        const phoneFormatted = this.phoneValidator.formatResult(phoneValidationResult);
+        
+        // Store phone number for identity verification
+        this.identityVerification.phoneNumber = value;
+        
+        if (phoneFormatted.type === 'error') {
+          this.showFieldError(fieldName, phoneFormatted.message);
+          this.showFieldIndicator(fieldName, false);
+          
+          // Check if identity verification is required
+          if (phoneValidationResult.requiresVerification && !this.identityVerification.isVerified) {
+            this.showIdentityVerificationModal();
+          }
           return false;
+        } else if (phoneFormatted.type === 'warning') {
+          this.showFieldError(fieldName, phoneFormatted.message, 'warning');
+          this.showFieldIndicator(fieldName, false);
+        } else {
+          this.clearFieldError(fieldName);
+          this.showFieldIndicator(fieldName, true);
         }
         break;
 
@@ -556,6 +599,253 @@ class CheckoutApp {
     this.clearFieldError('password');
     this.markFieldSuccess('password');
     return true;
+  }
+
+  /**
+   * Validate email and phone after password completion
+   */
+  async validateEmailAndPhoneAfterPassword() {
+    // Validate email with visual indicator
+    const emailValid = await this.validateFieldWithIndicator('email');
+    
+    // Validate phone with visual indicator
+    const phoneValid = await this.validateFieldWithIndicator('phone');
+    
+    return emailValid && phoneValid;
+  }
+
+  /**
+   * Validate field with visual indicator
+   */
+  async validateFieldWithIndicator(fieldName) {
+    const field = this.elements[fieldName];
+    const value = field.value.trim();
+    
+    // Clear previous visual indicators
+    this.clearFieldIndicator(fieldName);
+    
+    // If field is empty, don't show any indicator
+    if (!value) {
+      return false;
+    }
+    
+    let isValid = false;
+    
+    // Field-specific validation
+    switch (fieldName) {
+      case 'email':
+        // Use enhanced email validator with Mailgun API
+        const emailValidationResult = await this.emailValidator.validateWithAPI(value);
+        const emailFormatted = this.emailValidator.formatResult(emailValidationResult);
+        isValid = emailFormatted.type !== 'error';
+        break;
+        
+      case 'phone':
+        // Use enhanced phone validator with Twilio API
+        const firstName = this.elements['firstName']?.value?.trim() || '';
+        const lastName = this.elements['lastName']?.value?.trim() || '';
+        const phoneValidationResult = await this.phoneValidator.validateWithAPI(value, {
+          firstName,
+          lastName
+        });
+        const phoneFormatted = this.phoneValidator.formatResult(phoneValidationResult);
+        isValid = phoneFormatted.type !== 'error';
+        break;
+    }
+    
+    // Show visual indicator
+    this.showFieldIndicator(fieldName, isValid);
+    
+    return isValid;
+  }
+
+  /**
+   * Show field validation indicator
+   */
+  showFieldIndicator(fieldName, isValid) {
+    const checkIcon = document.getElementById(`${fieldName}-check`);
+    const xIcon = document.getElementById(`${fieldName}-x`);
+    
+    if (checkIcon && xIcon) {
+      if (isValid) {
+        checkIcon.classList.remove('hidden');
+        xIcon.classList.add('hidden');
+      } else {
+        checkIcon.classList.add('hidden');
+        xIcon.classList.remove('hidden');
+      }
+    }
+  }
+
+    /**
+   * Clear field validation indicator
+   */
+  clearFieldIndicator(fieldName) {
+    const checkIcon = document.getElementById(`${fieldName}-check`);
+    const xIcon = document.getElementById(`${fieldName}-x`);
+
+    if (checkIcon && xIcon) {
+      checkIcon.classList.add('hidden');
+      xIcon.classList.add('hidden');
+    }
+  }
+
+  /**
+   * Show identity verification modal
+   */
+  showIdentityVerificationModal() {
+    console.log('showIdentityVerificationModal called');
+    const modal = document.getElementById('identity-verification-modal');
+    if (modal) {
+      console.log('Modal found, removing hidden class');
+      modal.classList.remove('hidden');
+      this.setupIdentityVerificationListeners();
+    } else {
+      console.error('Identity verification modal not found');
+    }
+  }
+
+  /**
+   * Hide identity verification modal
+   */
+  hideIdentityVerificationModal() {
+    const modal = document.getElementById('identity-verification-modal');
+    if (modal) {
+      modal.classList.add('hidden');
+    }
+  }
+
+  /**
+   * Setup identity verification event listeners
+   */
+  setupIdentityVerificationListeners() {
+    const sendButton = document.getElementById('send-verification-code');
+    const verifyButton = document.getElementById('verify-code');
+    const closeButton = document.getElementById('close-verification-modal');
+    const codeInput = document.getElementById('verification-code');
+
+    if (sendButton) {
+      sendButton.addEventListener('click', () => this.sendVerificationCode());
+    }
+
+    if (verifyButton) {
+      verifyButton.addEventListener('click', () => this.verifyCode());
+    }
+
+    if (closeButton) {
+      closeButton.addEventListener('click', () => this.hideIdentityVerificationModal());
+    }
+
+    if (codeInput) {
+      codeInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          this.verifyCode();
+        }
+      });
+    }
+  }
+
+  /**
+   * Send verification code via SMS
+   */
+  async sendVerificationCode() {
+    if (!this.identityVerification.phoneNumber) {
+      this.showVerificationStatus('Please enter a valid phone number first.', 'error');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/verify-identity', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          phone: this.identityVerification.phoneNumber,
+          action: 'send'
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        this.showVerificationStatus('Verification code sent to your phone!', 'success');
+        document.getElementById('send-verification-code').disabled = true;
+        document.getElementById('send-verification-code').textContent = 'Code Sent';
+      } else {
+        this.showVerificationStatus(data.error || 'Failed to send verification code.', 'error');
+      }
+    } catch (error) {
+      console.error('Error sending verification code:', error);
+      this.showVerificationStatus('Failed to send verification code. Please try again.', 'error');
+    }
+  }
+
+  /**
+   * Verify the entered code
+   */
+  async verifyCode() {
+    const codeInput = document.getElementById('verification-code');
+    const code = codeInput?.value?.trim();
+
+    if (!code) {
+      this.showVerificationStatus('Please enter the verification code.', 'error');
+      return;
+    }
+
+    if (!this.identityVerification.phoneNumber) {
+      this.showVerificationStatus('Phone number not found.', 'error');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/verify-identity', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          phone: this.identityVerification.phoneNumber,
+          action: 'check',
+          code: code
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.valid) {
+        this.showVerificationStatus('Identity verified successfully!', 'success');
+        this.identityVerification.isVerified = true;
+        
+        // Update phone field to show verified status
+        this.showFieldIndicator('phone', true);
+        this.clearFieldError('phone');
+        
+        // Close modal after a short delay
+        setTimeout(() => {
+          this.hideIdentityVerificationModal();
+        }, 2000);
+      } else {
+        this.showVerificationStatus(data.message || 'Invalid verification code.', 'error');
+      }
+    } catch (error) {
+      console.error('Error verifying code:', error);
+      this.showVerificationStatus('Failed to verify code. Please try again.', 'error');
+    }
+  }
+
+  /**
+   * Show verification status message
+   */
+  showVerificationStatus(message, type = 'info') {
+    const statusDiv = document.getElementById('verification-status');
+    const messageP = document.getElementById('verification-message');
+
+    if (statusDiv && messageP) {
+      statusDiv.classList.remove('hidden');
+      statusDiv.className = `mb-4 p-3 rounded-md ${type === 'success' ? 'bg-green-100 text-green-700' : type === 'error' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`;
+      messageP.textContent = message;
+    }
   }
 
   /**
@@ -750,6 +1040,11 @@ class CheckoutApp {
     }
 
     delete this.state.errors[fieldName];
+    
+    // Clear visual indicators for email and phone fields
+    if (fieldName === 'email' || fieldName === 'phone') {
+      this.clearFieldIndicator(fieldName);
+    }
   }
 
   /**
@@ -1042,6 +1337,19 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize the checkout app
     window.checkoutApp = new CheckoutApp();
     
+    // Ensure identity verification modal is hidden on load
+    const modal = document.getElementById('identity-verification-modal');
+    if (modal) {
+      console.log('Checking modal state on init:', {
+        hasHiddenClass: modal.classList.contains('hidden'),
+        computedDisplay: window.getComputedStyle(modal).display
+      });
+      if (!modal.classList.contains('hidden')) {
+        console.log('Modal was visible on load, hiding it');
+        modal.classList.add('hidden');
+      }
+    }
+    
     PerformanceMonitor.mark('app-init-end');
     PerformanceMonitor.measure('app-initialization', 'app-init-start', 'app-init-end');
     
@@ -1078,7 +1386,7 @@ window.addEventListener('beforeunload', () => {
   }
 });
 
-// Export for testing
-if (typeof module !== 'undefined' && module.exports) {
+// Export for testing (only in Node.js environment)
+if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
   module.exports = { CheckoutApp, Analytics, PerformanceMonitor, ErrorReporter };
 } 

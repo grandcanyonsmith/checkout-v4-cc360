@@ -48,7 +48,7 @@ if (typeof AppConfig === 'undefined') {
   // Pricing configuration
   pricing: {
     monthly: {
-      priceId: 'price_1QPF6eBnnqL8bKFQGvC5BUlm',
+      priceId: 'price_1Rm28YBnnqL8bKFQEnVUozqo',
       amount: 14700,
       currency: 'usd',
       interval: 'month',
@@ -56,7 +56,7 @@ if (typeof AppConfig === 'undefined') {
       trialDays: 30
     },
     annual: {
-      priceId: 'price_1QPF6eBnnqL8bKFQNV3JFSVh',
+      priceId: 'price_1RjSoDBnnqL8bKFQUorl1OKI',
       amount: 147000,
       currency: 'usd',
       interval: 'year',

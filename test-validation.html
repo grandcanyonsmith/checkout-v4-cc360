@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Validation Test</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="bg-gray-50 p-8">
+    <div class="max-w-md mx-auto bg-white rounded-lg shadow-md p-6">
+        <h1 class="text-2xl font-bold text-gray-900 mb-6">Validation Test</h1>
+        
+        <form class="space-y-4">
+            <!-- Email field -->
+            <div class="form-group">
+                <label for="email" class="block text-sm font-medium text-gray-700 mb-2">
+                    Email address <span class="text-red-500">*</span>
+                </label>
+                <div class="relative">
+                    <input
+                        id="email"
+                        type="email"
+                        required
+                        placeholder="you@example.com"
+                        autocomplete="email"
+                        class="form-input pr-10"
+                    />
+                    <!-- Email validation indicator -->
+                    <div id="email-validation-indicator" class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                        <svg id="email-check" class="hidden h-5 w-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                        </svg>
+                        <svg id="email-x" class="hidden h-5 w-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                </div>
+                <div class="error-message" id="email-error"></div>
+            </div>
+
+            <!-- Phone field -->
+            <div class="form-group">
+                <label for="phone" class="block text-sm font-medium text-gray-700 mb-2">
+                    Phone number <span class="text-red-500">*</span>
+                </label>
+                <div class="relative">
+                    <input
+                        id="phone"
+                        type="tel"
+                        required
+                        placeholder="(555) 123-4567"
+                        autocomplete="tel"
+                        class="form-input pr-10"
+                    />
+                    <!-- Phone validation indicator -->
+                    <div id="phone-validation-indicator" class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                        <svg id="phone-check" class="hidden h-5 w-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                        </svg>
+                        <svg id="phone-x" class="hidden h-5 w-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                </div>
+                <div class="error-message" id="phone-error"></div>
+            </div>
+
+            <!-- Password field -->
+            <div class="form-group">
+                <label for="password" class="block text-sm font-medium text-gray-700 mb-2">
+                    Password <span class="text-red-500">*</span>
+                </label>
+                <input
+                    id="password"
+                    type="password"
+                    required
+                    placeholder="Enter your password"
+                    class="form-input"
+                />
+            </div>
+
+            <button type="button" onclick="testValidation()" class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700">
+                Test Validation
+            </button>
+        </form>
+
+        <div class="mt-6 p-4 bg-gray-100 rounded-lg">
+            <h3 class="font-semibold mb-2">Test Instructions:</h3>
+            <ol class="text-sm space-y-1">
+                <li>1. Enter a valid email (e.g., test@example.com)</li>
+                <li>2. Enter a valid phone (e.g., 5551234567)</li>
+                <li>3. Enter any password</li>
+                <li>4. Click "Test Validation" or blur the password field</li>
+                <li>5. Watch for green checkmarks (✓) or red X's (✗)</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        // Simple validation functions for testing
+        function isValidEmail(email) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return emailRegex.test(email);
+        }
+
+        function isValidPhone(phone) {
+            const cleanPhone = phone.replace(/\D/g, '');
+            return cleanPhone.length >= 10;
+        }
+
+        function showFieldIndicator(fieldName, isValid) {
+            const checkIcon = document.getElementById(`${fieldName}-check`);
+            const xIcon = document.getElementById(`${fieldName}-x`);
+            
+            if (checkIcon && xIcon) {
+                if (isValid) {
+                    checkIcon.classList.remove('hidden');
+                    xIcon.classList.add('hidden');
+                } else {
+                    checkIcon.classList.add('hidden');
+                    xIcon.classList.remove('hidden');
+                }
+            }
+        }
+
+        function clearFieldIndicator(fieldName) {
+            const checkIcon = document.getElementById(`${fieldName}-check`);
+            const xIcon = document.getElementById(`${fieldName}-x`);
+            
+            if (checkIcon && xIcon) {
+                checkIcon.classList.add('hidden');
+                xIcon.classList.add('hidden');
+            }
+        }
+
+        function validateField(fieldName) {
+            const field = document.getElementById(fieldName);
+            const value = field.value.trim();
+            
+            clearFieldIndicator(fieldName);
+            
+            if (!value) return false;
+            
+            let isValid = false;
+            
+            switch (fieldName) {
+                case 'email':
+                    isValid = isValidEmail(value);
+                    break;
+                case 'phone':
+                    isValid = isValidPhone(value);
+                    break;
+            }
+            
+            showFieldIndicator(fieldName, isValid);
+            return isValid;
+        }
+
+        function testValidation() {
+            validateField('email');
+            validateField('phone');
+        }
+
+        // Add event listeners
+        document.getElementById('password').addEventListener('blur', function() {
+            if (this.value.trim()) {
+                validateField('email');
+                validateField('phone');
+            }
+        });
+
+        document.getElementById('email').addEventListener('input', function() {
+            if (this.value.trim()) {
+                validateField('email');
+            } else {
+                clearFieldIndicator('email');
+            }
+        });
+
+        document.getElementById('phone').addEventListener('input', function() {
+            if (this.value.trim()) {
+                validateField('phone');
+            } else {
+                clearFieldIndicator('phone');
+            }
+        });
+    </script>
+</body>
+</html> 

@@ -1,0 +1,155 @@
+/**
+ * Vercel Serverless Function for Phone Verification with Twilio Identity API
+ */
+
+module.exports = async function handler(req, res) {
+  // Enable CORS
+  res.setHeader('Access-Control-Allow-Credentials', true);
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version'
+  );
+
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  try {
+    const { phone, firstName, lastName } = req.body;
+    
+    if (!phone) {
+      return res.status(400).json({
+        success: false,
+        error: 'Phone number is required'
+      });
+    }
+
+    // Twilio configuration from environment variables
+    const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID;
+    const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN;
+    
+    if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN) {
+      console.warn('Twilio credentials not configured, using basic validation');
+      return res.status(200).json({
+        success: true,
+        isValid: true,
+        validationMethod: 'basic_fallback',
+        risk: 'unknown'
+      });
+    }
+
+    // Clean phone number (remove all non-digits)
+    const cleanPhone = phone.replace(/\D/g, '');
+    
+    // Basic validation
+    if (cleanPhone.length < 10) {
+      return res.status(200).json({
+        success: true,
+        isValid: false,
+        validationMethod: 'basic',
+        risk: 'high',
+        reason: 'Phone number too short'
+      });
+    }
+
+    // Format phone number for Twilio (add +1 if US number)
+    let formattedPhone = cleanPhone;
+    if (cleanPhone.length === 10) {
+      formattedPhone = `+1${cleanPhone}`;
+    } else if (cleanPhone.length === 11 && cleanPhone.startsWith('1')) {
+      formattedPhone = `+${cleanPhone}`;
+    } else if (!cleanPhone.startsWith('+')) {
+      formattedPhone = `+${cleanPhone}`;
+    }
+
+    try {
+      // Use Twilio Lookup API to verify phone number
+      const lookupUrl = `https://lookups.twilio.com/v2/PhoneNumbers/${encodeURIComponent(formattedPhone)}`;
+      
+      const response = await fetch(lookupUrl, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Basic ${Buffer.from(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`).toString('base64')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        console.warn('Twilio Lookup API error:', response.status);
+        return res.status(200).json({
+          success: true,
+          isValid: true,
+          validationMethod: 'basic_fallback',
+          risk: 'unknown',
+          apiError: `Twilio API returned ${response.status}`
+        });
+      }
+
+      const data = await response.json();
+      
+      // Check if phone number is valid
+      const isValid = data.valid === true;
+      
+      // Determine risk level
+      let risk = 'low';
+      let reason = null;
+      
+      if (!isValid) {
+        risk = 'high';
+        reason = 'Invalid phone number';
+      } else if (data.line_type_intelligence && data.line_type_intelligence.type === 'VOIP') {
+        risk = 'medium';
+        reason = 'VOIP number detected';
+      } else if (data.line_type_intelligence && data.line_type_intelligence.type === 'PREMIUM') {
+        risk = 'high';
+        reason = 'Premium rate number';
+      }
+
+      // If name is provided, we could potentially use Twilio's Identity API
+      // for additional verification, but that requires user consent and verification flow
+      // For now, we'll just validate the phone number format and type
+      
+      const result = {
+        success: true,
+        isValid,
+        phoneNumber: data.phone_number,
+        countryCode: data.country_code,
+        nationalFormat: data.national_format,
+        internationalFormat: data.international_format,
+        lineType: data.line_type_intelligence?.type || 'unknown',
+        carrier: data.carrier?.name || null,
+        risk,
+        reason,
+        validationMethod: 'twilio_lookup_api'
+      };
+
+      // Add caching headers for successful validation
+      res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate');
+      res.status(200).json(result);
+
+    } catch (twilioError) {
+      console.error('Twilio request error:', twilioError);
+      return res.status(200).json({
+        success: true,
+        isValid: true,
+        validationMethod: 'basic_fallback',
+        risk: 'unknown',
+        apiError: twilioError.message
+      });
+    }
+
+  } catch (error) {
+    console.error('Phone verification error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+}; 

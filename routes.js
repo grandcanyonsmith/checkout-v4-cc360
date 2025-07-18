@@ -11,7 +11,7 @@ const routes = {
     subscriptionType: 'monthly',
     hasTrial: true,
     trialDays: 30,
-    priceId: 'price_1QPF6eBnnqL8bKFQGvC5BUlm',
+    priceId: 'price_1Rm28YBnnqL8bKFQEnVUozqo',
     monthlyPrice: 147,
     annualPrice: 1470,
     buttonText: 'Start Free Trial',

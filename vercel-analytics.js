@@ -28,9 +28,12 @@ class VercelAnalytics {
         this.loadSpeedInsights()
       ]);
       
-      console.log('✅ Vercel Analytics and Speed Insights loaded successfully');
+      console.log('✅ Analytics initialization complete', {
+        analyticsLoaded: this.analyticsLoaded,
+        speedInsightsLoaded: this.speedInsightsLoaded
+      });
     } catch (error) {
-      console.error('❌ Failed to load Vercel analytics:', error);
+      console.error('❌ Analytics initialization error:', error);
     }
   }
 
@@ -38,17 +41,32 @@ class VercelAnalytics {
     try {
       console.log('📊 Loading Vercel Analytics...');
       
-      // Use CDN import for analytics
-      const { inject } = await import('https://cdn.jsdelivr.net/npm/@vercel/analytics@1.1.1/dist/index.js');
+      // Check if already loaded
+      if (window.va) {
+        console.log('✅ Vercel Analytics already loaded');
+        this.analyticsLoaded = true;
+        return;
+      }
       
-      // Inject analytics
-      inject();
-      this.analyticsLoaded = true;
+      // Dynamically load the analytics script
+      const script = document.createElement('script');
+      script.src = 'https://va.vercel-scripts.com/v1/script.js';
+      script.defer = true;
       
-      console.log('✅ Vercel Analytics loaded successfully');
+      // Wait for script to load
+      await new Promise((resolve, reject) => {
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+      });
       
-      // Track initial page view
-      this.trackPageView();
+      // Verify analytics loaded
+      if (window.va) {
+        console.log('✅ Vercel Analytics loaded successfully');
+        this.analyticsLoaded = true;
+      } else {
+        throw new Error('Analytics script loaded but window.va not found');
+      }
     } catch (error) {
       console.error('❌ Failed to load Vercel Analytics:', error);
     }
@@ -58,17 +76,17 @@ class VercelAnalytics {
     try {
       console.log('⚡ Loading Vercel Speed Insights...');
       
-      // Use CDN import for speed insights with proper error handling
-      const speedInsightsModule = await import('https://cdn.jsdelivr.net/npm/@vercel/speed-insights@1.0.2/dist/index.js');
-      
-      if (speedInsightsModule && speedInsightsModule.injectSpeedInsights) {
-        // Inject speed insights
-        speedInsightsModule.injectSpeedInsights();
+      // Check if already loaded
+      if (window.si) {
+        console.log('✅ Vercel Speed Insights already loaded');
         this.speedInsightsLoaded = true;
-        console.log('✅ Vercel Speed Insights loaded successfully');
-      } else {
-        throw new Error('Speed Insights module not found');
+        return;
       }
+      
+      // For browser environments, we need to load Speed Insights differently
+      // Speed Insights is typically loaded via npm package, so we'll skip it for now
+      console.log('ℹ️ Speed Insights requires npm package - skipping for CDN setup');
+      
     } catch (error) {
       console.error('❌ Failed to load Vercel Speed Insights:', error);
     }
@@ -78,99 +96,80 @@ class VercelAnalytics {
     if (this.analyticsLoaded && window.va) {
       console.log('📊 Tracking page view:', path);
       window.va('pageview', { path });
-    } else {
-      console.log('⚠️ Analytics not ready for page view tracking');
     }
   }
 
-  trackEvent(name, properties = {}) {
+  trackEvent(eventName, properties = {}) {
     if (this.analyticsLoaded && window.va) {
-      console.log('📊 Tracking event:', name, properties);
-      window.va('event', { name, data: properties });
-    } else {
-      console.log('⚠️ Analytics not ready for event tracking:', name);
+      console.log('📊 Tracking event:', eventName, properties);
+      window.va('event', eventName, properties);
     }
   }
 
-  // Checkout-specific tracking methods
-  trackCheckoutStart(subscriptionType) {
-    this.trackEvent('checkout_started', {
-      subscription_type: subscriptionType,
-      page: 'checkout'
-    });
-  }
-
-  trackFormFieldCompleted(fieldName) {
-    this.trackEvent('form_field_completed', {
+  // Track form interactions
+  trackFormInteraction(fieldName, action = 'focus') {
+    this.trackEvent('form_interaction', {
       field: fieldName,
-      page: 'checkout'
+      action: action,
+      page: window.location.pathname
     });
   }
 
-  trackEmailValidation(isValid, method) {
-    this.trackEvent('email_validation', {
-      is_valid: isValid,
-      method: method,
-      page: 'checkout'
+  // Track checkout progress
+  trackCheckoutStep(step, additionalData = {}) {
+    this.trackEvent('checkout_step', {
+      step: step,
+      ...additionalData
     });
   }
 
-  trackPaymentAttempt(subscriptionType, amount) {
-    this.trackEvent('payment_attempt', {
-      subscription_type: subscriptionType,
-      amount: amount,
-      page: 'checkout'
+  // Track errors
+  trackError(errorType, errorMessage, additionalData = {}) {
+    this.trackEvent('error', {
+      type: errorType,
+      message: errorMessage,
+      page: window.location.pathname,
+      ...additionalData
     });
   }
 
-  trackPaymentSuccess(subscriptionType, amount, customerId) {
-    this.trackEvent('payment_success', {
-      subscription_type: subscriptionType,
-      amount: amount,
-      customer_id: customerId,
-      page: 'checkout'
-    });
-  }
+  // Track performance metrics
+  trackPerformance() {
+    if (!this.analyticsLoaded) return;
 
-  trackPaymentError(error, subscriptionType) {
-    this.trackEvent('payment_error', {
-      error: error,
-      subscription_type: subscriptionType,
-      page: 'checkout'
-    });
-  }
-
-  trackFormValidationError(field, error) {
-    this.trackEvent('form_validation_error', {
-      field: field,
-      error: error,
-      page: 'checkout'
-    });
-  }
-
-  // Debug method to check status
-  getStatus() {
-    return {
-      analyticsLoaded: this.analyticsLoaded,
-      speedInsightsLoaded: this.speedInsightsLoaded,
-      isProduction: this.isProduction,
-      vaAvailable: !!window.va
-    };
+    // Use Performance API if available
+    if (window.performance && window.performance.timing) {
+      const timing = window.performance.timing;
+      const pageLoadTime = timing.loadEventEnd - timing.navigationStart;
+      const domReadyTime = timing.domContentLoadedEventEnd - timing.navigationStart;
+      
+      this.trackEvent('performance', {
+        pageLoadTime,
+        domReadyTime,
+        page: window.location.pathname
+      });
+    }
   }
 }
 
-// Initialize analytics only if not already initialized
-if (typeof window !== 'undefined' && !window.VercelAnalytics) {
-  const vercelAnalytics = new VercelAnalytics();
-  
-  // Export for use in other scripts
-  window.VercelAnalytics = vercelAnalytics;
-  
-  // Add debug method to window for easy testing
-  window.debugAnalytics = () => {
-    console.log('🔍 Analytics Status:', vercelAnalytics.getStatus());
-    return vercelAnalytics.getStatus();
-  };
-}
+// Initialize analytics
+const analytics = new VercelAnalytics();
 
-console.log('🎯 VercelAnalytics class ready');
+// Track page views on load
+window.addEventListener('load', () => {
+  analytics.trackPageView();
+  analytics.trackPerformance();
+});
+
+// Track page views on route changes (for SPAs)
+let lastPath = window.location.pathname;
+setInterval(() => {
+  const currentPath = window.location.pathname;
+  if (currentPath !== lastPath) {
+    lastPath = currentPath;
+    analytics.trackPageView(currentPath);
+  }
+}, 1000);
+
+// Export for use in other scripts
+window.VercelAnalytics = analytics;
