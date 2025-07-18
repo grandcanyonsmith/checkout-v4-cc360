@@ -373,7 +373,7 @@ class CheckoutApp {
    * Create payment element with client secret
    */
   async createPaymentElement(clientSecret) {
-    const paymentElementDiv = document.getElementById('payment-element');
+    let paymentElementDiv = document.getElementById('payment-element');
     if (!paymentElementDiv) {
       throw new Error('Payment element container not found');
     }
