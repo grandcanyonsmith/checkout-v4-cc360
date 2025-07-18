@@ -447,6 +447,29 @@ class CheckoutApp {
         await new Promise(resolve => setTimeout(resolve, 100));
 
         console.log('Payment element created and mounted successfully');
+        
+        // Add visual feedback that payment element is ready
+        const paymentElementDiv = document.getElementById('payment-element');
+        if (paymentElementDiv) {
+          // Add a subtle success indicator
+          const readyIndicator = document.createElement('div');
+          readyIndicator.className = 'mt-2 text-sm text-green-600 flex items-center';
+          readyIndicator.innerHTML = `
+            <svg class="h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+            </svg>
+            Payment form ready
+          `;
+          paymentElementDiv.appendChild(readyIndicator);
+          
+          // Remove the indicator after 3 seconds
+          setTimeout(() => {
+            if (readyIndicator.parentNode) {
+              readyIndicator.remove();
+            }
+          }, 3000);
+        }
+        
         return; // Success, exit the retry loop
         
       } catch (error) {
@@ -1192,6 +1215,18 @@ class CheckoutApp {
     if (isReady && !this.paymentElement && this.stripe) {
       try {
         console.log('Form is ready, creating payment element...');
+        
+        // Show loading state for payment element creation
+        const paymentElementDiv = document.getElementById('payment-element');
+        if (paymentElementDiv) {
+          paymentElementDiv.innerHTML = `
+            <div class="text-center py-4">
+              <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
+              <p class="mt-2 text-sm text-gray-600">Loading payment form...</p>
+            </div>
+          `;
+        }
+        
         const clientSecret = await this.createPaymentIntent();
         this.state.clientSecret = clientSecret;
         await this.createPaymentElement(clientSecret);
