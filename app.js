@@ -234,12 +234,20 @@ class CheckoutApp {
 
     // Form field validation
     ['firstName', 'lastName', 'email', 'phone'].forEach(field => {
-      this.elements[field].addEventListener('input', this.debounce(() => this.validateField(field), this.config.ui.debounceDelay));
-      this.elements[field].addEventListener('blur', () => this.validateField(field));
+      this.elements[field].addEventListener('input', this.debounce(async () => {
+        await this.validateField(field);
+        await this.checkFormReady();
+      }, this.config.ui.debounceDelay));
+      this.elements[field].addEventListener('blur', async () => {
+        await this.validateField(field);
+        await this.checkFormReady();
+      });
     });
 
     // Terms checkbox
-    this.elements['terms'].addEventListener('change', this.checkFormReady.bind(this));
+    this.elements['terms'].addEventListener('change', async () => {
+      await this.checkFormReady();
+    });
 
     // Error modal
     this.elements['close-error'].addEventListener('click', this.hideError.bind(this));
@@ -453,14 +461,17 @@ class CheckoutApp {
         throw new Error('Stripe not initialized');
       }
 
-      // Create payment intent first (without creating subscription)
-      const clientSecret = await this.createPaymentIntent();
-      
-      // Create payment element with the client secret
-      await this.createPaymentElement(clientSecret);
+      // Check if payment element already exists
+      if (!this.paymentElement) {
+        // Create payment intent first (without creating subscription)
+        const clientSecret = await this.createPaymentIntent();
+        
+        // Create payment element with the client secret
+        await this.createPaymentElement(clientSecret);
+      }
 
       // Confirm payment
-      const paymentResult = await this.confirmPayment(clientSecret);
+      const paymentResult = await this.confirmPayment(this.state.clientSecret);
 
       // Only create customer and subscription AFTER successful payment
       if (paymentResult.success) {
@@ -1044,7 +1055,7 @@ class CheckoutApp {
   /**
    * Check if form is ready for submission
    */
-  checkFormReady() {
+  async checkFormReady() {
     const isReady = (
       this.elements['firstName'].value.trim() &&
       this.elements['lastName'].value.trim() &&
@@ -1055,6 +1066,19 @@ class CheckoutApp {
     );
 
     this.elements['submit'].disabled = !isReady;
+
+    // If form is ready and we don't have a payment element yet, create one
+    if (isReady && !this.paymentElement && this.stripe) {
+      try {
+        console.log('Form is ready, creating payment element...');
+        const clientSecret = await this.createPaymentIntent();
+        this.state.clientSecret = clientSecret;
+        await this.createPaymentElement(clientSecret);
+      } catch (error) {
+        console.error('Error creating payment element:', error);
+        // Don't show error to user yet, they haven't submitted
+      }
+    }
   }
 
   /**
