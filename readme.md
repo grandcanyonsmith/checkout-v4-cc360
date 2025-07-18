@@ -10,7 +10,7 @@ A production-ready checkout system for Course Creator 360 with Stripe integratio
 - **Production Ready**: Comprehensive logging, error handling, and monitoring
 - **Responsive Design**: Modern UI with Tailwind CSS
 - **Form Auto-save**: Automatic form data persistence
-- **Analytics Integration**: Facebook Pixel and Google Analytics ready
+- **Analytics Integration**: Vercel Analytics and Speed Insights with comprehensive tracking
 
 ## Quick Start
 
@@ -57,12 +57,17 @@ A production-ready checkout system for Course Creator 360 with Stripe integratio
    NODE_ENV=development
    ```
 
-4. **Start the development server**
+4. **Build the application**
+   ```bash
+   npm run build
+   ```
+
+5. **Start the development server**
    ```bash
    npm start
    ```
 
-5. **Open your browser**
+6. **Open your browser**
    ```
    http://localhost:3000
    ```
@@ -97,9 +102,105 @@ A production-ready checkout system for Course Creator 360 with Stripe integratio
 - `POST /api/validate-email`: Validate email with Mailgun API
 - `POST /webhook/stripe`: Stripe webhook handler
 
+## Analytics & Performance Monitoring
+
+This application includes comprehensive analytics and performance monitoring using Vercel Analytics and Speed Insights.
+
+### Vercel Analytics
+- **Automatic Page Views**: Tracks all page visits automatically
+- **Custom Events**: Tracks checkout-specific events (form completion, payments, errors)
+- **User Journey**: Monitors user flow through the checkout process
+- **Conversion Tracking**: Tracks successful subscriptions and payment completions
+
+### Vercel Speed Insights
+- **Performance Monitoring**: Real-time performance metrics
+- **Core Web Vitals**: Tracks LCP, FID, and CLS scores
+- **User Experience**: Monitors actual user performance data
+- **Performance Alerts**: Automatic alerts for performance regressions
+
+### Implementation Details
+
+The analytics are implemented using CDN imports for maximum compatibility with vanilla JavaScript applications:
+
+```javascript
+// Analytics are loaded via CDN in vercel-analytics.js
+const { inject } = await import('https://cdn.jsdelivr.net/npm/@vercel/analytics@1.1.1/dist/index.js');
+const { injectSpeedInsights } = await import('https://cdn.jsdelivr.net/npm/@vercel/speed-insights@1.0.2/dist/index.js');
+```
+
+### Custom Event Tracking
+
+The application tracks the following custom events:
+
+- `checkout_started`: When user begins checkout process
+- `form_field_completed`: When user completes form fields
+- `email_validation`: Email validation results
+- `payment_attempt`: Payment submission attempts
+- `payment_success`: Successful payments
+- `payment_error`: Payment errors
+- `form_validation_error`: Form validation errors
+
+### Testing Analytics
+
+To test the analytics implementation:
+
+1. **Open the test page**:
+   ```
+   http://localhost:3000/test-analytics.html
+   ```
+
+2. **Check browser console** for analytics loading status
+
+3. **Use the test buttons** to verify event tracking
+
+4. **Check Network tab** for requests to `va.vercel-scripts.com`
+
+5. **Deploy to Vercel** and check the analytics dashboard
+
+### Dependencies
+
+The following packages are required:
+```json
+{
+  "@vercel/analytics": "^1.5.0",
+  "@vercel/speed-insights": "^1.0.2"
+}
+```
+
+### Configuration
+
+Analytics are automatically enabled in both development and production environments for testing purposes.
+
+### Troubleshooting
+
+If analytics aren't working:
+
+1. **Check the test page**: Visit `/test-analytics.html` to verify analytics are loading
+2. **Check browser console**: Look for analytics-related log messages
+3. **Check Network tab**: Look for requests to `va.vercel-scripts.com`
+4. **Verify deployment**: Analytics only send data when deployed to Vercel
+5. **Check content blockers**: Disable ad blockers that might block analytics
+6. **Wait for data**: Analytics data may take 30 seconds to appear in dashboard
+
+Common issues:
+- **"Analytics not ready"**: Analytics are still loading, wait a few seconds
+- **"Failed to load"**: Check internet connection and CDN availability
+- **No data in dashboard**: Ensure you're on the production Vercel deployment
+
 ## Production Deployment
 
-See [PRODUCTION_GUIDE.md](./PRODUCTION_GUIDE.md) for detailed deployment instructions.
+### Vercel (Recommended)
+This application is optimized for Vercel deployment:
+
+```bash
+# Deploy to Vercel
+npm run deploy
+```
+
+See [VERCEL_DEPLOYMENT.md](./VERCEL_DEPLOYMENT.md) for detailed Vercel deployment instructions.
+
+### Traditional Server
+See [PRODUCTION_GUIDE.md](./PRODUCTION_GUIDE.md) for traditional server deployment instructions.
 
 ## Development
 
@@ -115,14 +216,17 @@ See [PRODUCTION_GUIDE.md](./PRODUCTION_GUIDE.md) for detailed deployment instruc
 ├── email-validator.js     # Email validation
 ├── sanitizer.js           # Input sanitization
 ├── routes.js              # Route configuration
+├── vercel-analytics.js    # Vercel Analytics and Speed Insights
 ├── api/                   # API endpoints
 │   └── validate-email.js  # Email validation API
 └── styles.css             # Custom styles
 ```
 
 ### Available Scripts
-- `npm start`: Start development server
-- `npm run serve`: Start production server
+- `npm start`: Start development server (Express)
+- `npm run dev`: Start Vercel development server
+- `npm run serve`: Start production server (Express)
+- `npm run deploy`: Deploy to Vercel
 - `npm test`: Run tests (if configured)
 
 ## Contributing

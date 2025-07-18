@@ -1,9 +1,8 @@
 /**
  * Vercel Serverless Function for Email Validation
- * Place this file in /api/validate-email.js for Vercel deployment
  */
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   // Enable CORS
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -107,4 +106,4 @@ export default async function handler(req, res) {
       error: error.message
     });
   }
-} 
+};

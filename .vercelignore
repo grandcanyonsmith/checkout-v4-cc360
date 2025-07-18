@@ -1,0 +1,41 @@
+# Vercel ignore file
+# Files and directories to exclude from deployment
+
+# Development files
+server.js
+serve.js
+config.js
+middleware.js
+logger.js
+
+# Test files
+tests/
+test-deployment.js
+*.test.js
+
+# Build artifacts
+node_modules/
+.env.local
+.env.development
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Documentation (optional)
+README.md
+PRODUCTION_GUIDE.md
+
+# Git
+.git/
+.gitignore
