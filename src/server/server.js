@@ -54,6 +54,23 @@ app.post('/api/create-payment-intent', async (req, res) => {
   try {
     const { amount, currency, subscription_type, price_id, customer_id, subscription_id } = req.body;
 
+    // Validate required parameters
+    if (amount === undefined || amount === null) {
+      serverLogger.error('Missing amount parameter in payment intent request', { body: req.body });
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required parameter: amount'
+      });
+    }
+    
+    if (typeof amount !== 'number' || isNaN(amount)) {
+      serverLogger.error('Invalid amount parameter in payment intent request', { amount, body: req.body });
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid amount parameter'
+      });
+    }
+
     // For trial subscriptions (amount = 0), use Setup Intent instead of Payment Intent
     if (amount === 0) {
       const setupIntent = await stripe.setupIntents.create({

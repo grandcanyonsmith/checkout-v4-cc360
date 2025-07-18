@@ -277,33 +277,72 @@ class CheckoutApp {
     });
   }
 
-  /**
+    /**
    * Create payment intent
    */
   async createPaymentIntent() {
+    // Ensure we have a valid subscription type
+    if (!this.state.subscriptionType) {
+      throw new Error('Subscription type not determined');
+    }
+    
+    // Ensure we have pricing configuration
+    if (!this.config.pricing || !this.config.pricing[this.state.subscriptionType]) {
+      throw new Error(`Pricing configuration not found for subscription type: ${this.state.subscriptionType}`);
+    }
+    
     const pricing = this.config.pricing[this.state.subscriptionType];
     
     // For monthly with trial, we don't charge anything initially
     // For annual, we charge the full amount
-    const amount = pricing.hasTrial ? 0 : pricing.amount;
+    const amount = pricing.hasTrial ? 0 : (pricing.amount || 0);
+    
+    // Ensure amount is a valid number
+    const finalAmount = typeof amount === 'number' && !isNaN(amount) ? amount : 0;
+    
+    const requestBody = {
+      amount: finalAmount,
+      currency: pricing.currency || 'usd',
+      subscription_type: this.state.subscriptionType,
+      price_id: pricing.priceId || '',
+      customer_id: this.state.customerId,
+      subscription_id: this.state.sessionId // sessionId stores the subscriptionId
+    };
+    
+    // Validate that all required fields are present
+    if (typeof requestBody.amount !== 'number' || isNaN(requestBody.amount)) {
+      throw new Error(`Invalid amount: ${requestBody.amount}`);
+    }
+    
+    if (!requestBody.customer_id) {
+      throw new Error('Customer ID is required');
+    }
+    
+    if (!requestBody.subscription_id) {
+      throw new Error('Subscription ID is required');
+    }
+    
+    // Log the request for debugging (only in development)
+    if (this.config.isDevelopment) {
+      console.log('Creating payment intent with:', {
+        subscriptionType: this.state.subscriptionType,
+        pricing: pricing,
+        requestBody: requestBody
+      });
+    }
 
     const response = await fetch('/api/create-payment-intent', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        amount: amount,
-        currency: pricing.currency,
-        subscription_type: this.state.subscriptionType,
-        price_id: pricing.priceId,
-        customer_id: this.state.customerId,
-        subscription_id: this.state.sessionId // sessionId stores the subscriptionId
-      })
+      body: JSON.stringify(requestBody)
     });
     
     if (!response.ok) {
-      throw new Error(`Failed to create payment intent: ${response.status}`);
+      const errorText = await response.text();
+      console.error('Payment intent creation failed:', errorText);
+      throw new Error(`Failed to create payment intent: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
