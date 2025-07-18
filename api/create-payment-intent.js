@@ -116,10 +116,6 @@ module.exports = async function handler(req, res) {
     if (amount === 0) {
       const setupIntent = await stripe.setupIntents.create({
         customer: customerId,
-        automatic_payment_methods: { 
-          enabled: true,
-          allow_redirects: 'never'
-        },
         payment_method_types: ['card'],
         payment_method_options: {
           card: {
@@ -143,10 +139,6 @@ module.exports = async function handler(req, res) {
         customer: customerId,
         amount,
         currency,
-        automatic_payment_methods: { 
-          enabled: true,
-          allow_redirects: 'never'
-        },
         payment_method_types: ['card'],
         payment_method_options: {
           card: {
