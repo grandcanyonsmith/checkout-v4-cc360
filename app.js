@@ -1134,6 +1134,8 @@ class CheckoutApp {
       // Re-throw the error with a user-friendly message
       if (error.message.includes('Prepaid cards')) {
         throw error; // Keep the specific prepaid card error
+      } else if (error.message.includes('CVC') || error.message.includes('security code')) {
+        throw error; // Keep the specific CVC error
       } else if (error.message.includes('Card error:') || error.message.includes('Payment failed')) {
         throw error; // Keep specific card errors
       } else {
