@@ -16,7 +16,7 @@ class CheckoutApp {
       },
       pricing: {
         monthly: {
-          priceId: "price_1Rm2YrB4vAF3NRPRsPaLBTwN",
+          priceId: "price_1QPF6eBnnqL8bKFQGvC5BUlm",
           amount: 14700, // $147.00 in cents
           currency: "usd",
           interval: "month",
@@ -24,7 +24,7 @@ class CheckoutApp {
           trialDays: 30
         },
         annual: {
-          priceId: "price_1Rm2ZFB4vAF3NRPRqE8pzimp",
+          priceId: "price_1QPF6eBnnqL8bKFQNV3JFSVh",
           amount: 147000,
           currency: "usd",
           interval: "year",
