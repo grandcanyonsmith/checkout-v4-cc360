@@ -1,0 +1,51 @@
+{
+  "name": "course-creator-360-checkout",
+  "version": "4.0.0",
+  "description": "Enhanced checkout page for Course Creator 360 with modern UX, security, and accessibility features",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node serve.js",
+    "serve": "node serve.js",
+    "server": "node server.js",
+    "test": "echo \"No tests specified\" && exit 0",
+    "lint": "echo \"No linter configured\" && exit 0",
+    "build": "echo \"Build complete\"",
+    "deploy": "echo \"Deploy script not configured\" && exit 0"
+  },
+  "keywords": [
+    "checkout",
+    "stripe",
+    "payment",
+    "subscription",
+    "course-creator",
+    "ecommerce",
+    "web-app"
+  ],
+  "author": "Course Creator 360",
+  "license": "UNLICENSED",
+  "private": true,
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead",
+    "not ie 11"
+  ],
+  "dependencies": {
+    "express": "^4.18.2",
+    "stripe": "^14.0.0",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/course-creator-360/checkout-v4-cc360.git"
+  },
+  "bugs": {
+    "url": "https://github.com/course-creator-360/checkout-v4-cc360/issues"
+  },
+  "homepage": "https://coursecreator360.com/checkout"
+} 

@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-white">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Start your free trial of Course Creator 360 - Everything you need to run your online course business" />
+  <meta name="theme-color" content="#1e40af" />
+  
+  <title>Course Creator 360 · Start Your Free Trial</title>
+  
+  <!-- Preload critical resources -->
+  <link rel="preload" href="https://cdn.tailwindcss.com" as="script" />
+  <link rel="preload" href="https://js.stripe.com/basil/stripe.js" as="script" />
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  
+  <!-- Stripe v11 Checkout -->
+  <script src="https://js.stripe.com/basil/stripe.js" defer></script>
+  
+  <!-- Custom styles -->
+  <link rel="stylesheet" href="styles.css" />
+  
+  <!-- Configuration -->
+  <script src="app-config.js"></script>
+  
+  <!-- Email Validator -->
+  <script src="email-validator.js" defer></script>
+  
+  <!-- Favicon -->
+  <link rel="icon" type="image/x-icon" href="https://cc360-pages.s3.us-west-2.amazonaws.com/course-creator-360-logo.webp" />
+</head>
+
+<body class="h-full bg-white font-sans antialiased">
+  <!-- Loading overlay -->
+  <div id="loading-overlay" class="fixed inset-0 z-50 flex items-center justify-center bg-white bg-opacity-90 transition-opacity duration-300">
+    <div class="text-center">
+      <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+      <p class="mt-4 text-gray-600">Loading your checkout experience...</p>
+    </div>
+  </div>
+
+  <!-- Split background for desktop -->
+  <div class="hidden lg:block fixed inset-0 z-0" aria-hidden="true">
+    <div class="absolute left-0 top-0 h-full w-1/2 bg-white"></div>
+    <div class="absolute right-0 top-0 h-full w-1/2 bg-gradient-to-br from-blue-900 to-blue-800"></div>
+  </div>
+
+  <!-- Header -->
+  <header class="relative z-10 max-w-7xl mx-auto">
+    <div class="flex items-center justify-between px-4 py-4 sm:px-8 lg:px-8">
+      <a href="#" class="flex items-center space-x-3 group">
+        <img
+          src="https://cc360-pages.s3.us-west-2.amazonaws.com/course-creator-360-logo.webp"
+          class="h-8 w-auto transition-transform group-hover:scale-105"
+          alt="Course Creator 360"
+        />
+        <span class="text-lg font-bold text-blue-900 tracking-tight hidden sm:inline">
+          Course Creator 360
+        </span>
+      </a>
+      
+      <!-- Trust indicators -->
+      <div class="hidden md:flex items-center space-x-4 text-sm text-gray-600">
+        <div class="flex items-center space-x-1">
+          <svg class="h-4 w-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+          </svg>
+          <span id="trial-text">30-Day Free Trial</span>
+        </div>
+        <div class="flex items-center space-x-1">
+          <svg class="h-4 w-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+          </svg>
+          <span>Cancel Anytime</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main content -->
+  <main class="relative z-10 max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-x-16 px-4 sm:px-8">
+    
+    <!-- Order Summary -->
+    <section
+      aria-labelledby="summary-heading"
+      class="order-2 lg:order-2 max-w-lg w-full mx-auto rounded-xl overflow-hidden
+             bg-gradient-to-br from-blue-900 to-blue-800 text-white mt-4 mb-8 lg:my-16 px-6 py-8 relative shadow-2xl"
+    >
+      <h2 id="summary-heading" class="sr-only">Order summary</h2>
+      
+      <!-- Plan details -->
+      <div class="mb-6">
+        <span class="uppercase text-xs text-blue-100 tracking-wide block font-medium">Your plan</span>
+        <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between mt-2">
+          <span class="text-4xl font-extrabold text-white" id="plan-title">30 days free</span>
+          <span class="sm:ml-4 text-lg text-blue-200 font-medium leading-tight" id="plan-price">
+            then $147/mo
+          </span>
+        </div>
+      </div>
+
+      <!-- Premium plan box -->
+      <div class="rounded-lg bg-blue-800/60 backdrop-blur-sm px-5 py-4 mb-6 border border-blue-700/30">
+        <div class="flex justify-between items-start">
+          <div>
+            <span class="block font-bold text-white text-lg">PREMIUM</span>
+            <span class="block text-sm text-blue-100 mt-1">
+              Everything you need to run your business
+            </span>
+          </div>
+          <div class="text-right">
+            <span class="block text-sm text-blue-100 font-bold" id="trial-period">
+              30 days free
+            </span>
+            <span class="block text-xs text-blue-200" id="after-trial">
+              $147/mo after
+            </span>
+          </div>
+        </div>
+        
+        <!-- Savings badge -->
+        <div id="savings-badge" class="flex items-center rounded-full bg-green-600/20 px-3 py-1 mt-3 text-xs font-medium border border-green-500/30">
+          <svg class="h-3 w-3 mr-1 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+          </svg>
+          <span id="savings-text">Save $294 with annual billing</span>
+        </div>
+      </div>
+
+      <!-- Feature list -->
+      <div class="mb-6">
+        <h3 class="text-sm font-semibold text-blue-100 mb-3">What's included:</h3>
+        <ul class="space-y-2 text-sm text-blue-50">
+          <li class="flex items-center">
+            <svg class="h-4 w-4 mr-2 text-green-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+            </svg>
+            Unlimited courses and students
+          </li>
+          <li class="flex items-center">
+            <svg class="h-4 w-4 mr-2 text-green-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+            </svg>
+            Advanced analytics & reporting
+          </li>
+          <li class="flex items-center">
+            <svg class="h-4 w-4 mr-2 text-green-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+            </svg>
+            Custom branding & domains
+          </li>
+          <li class="flex items-center">
+            <svg class="h-4 w-4 mr-2 text-green-400 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+            </svg>
+            24/7 priority support
+          </li>
+        </ul>
+      </div>
+
+      <!-- Totals -->
+      <dl class="text-sm text-blue-50 space-y-2 border-t border-blue-700/50 pt-4">
+        <div class="flex justify-between">
+          <dt>Subtotal</dt>
+          <dd id="subtotal">$147.00</dd>
+        </div>
+        <div class="flex justify-between" id="trial-row">
+          <dt>Total after trial</dt>
+          <dd id="total-after-trial">$147.00</dd>
+        </div>
+        <div class="flex justify-between font-bold text-white text-lg border-t border-blue-700/50 pt-2">
+          <dt>Total due today</dt>
+          <dd id="total-due">$0.00</dd>
+        </div>
+      </dl>
+
+      <!-- Trust indicators -->
+      <div class="mt-6 text-center">
+        <div class="flex items-center justify-center space-x-4 text-xs text-blue-200 mb-3">
+          <div class="flex items-center space-x-1">
+            <svg class="h-3 w-3 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" />
+            </svg>
+            <span>SSL Secured</span>
+          </div>
+          <div class="flex items-center space-x-1">
+            <svg class="h-3 w-3 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+            </svg>
+            <span>PCI Compliant</span>
+          </div>
+        </div>
+        <p class="text-xs text-blue-200">
+          Need help? <a href="#" class="underline hover:text-white transition-colors">Contact support</a>
+        </p>
+      </div>
+    </section>
+
+    <!-- Checkout Form -->
+    <section class="order-1 lg:order-1 flex min-h-screen items-start justify-center">
+      <div class="w-full max-w-md">
+        <form id="payment-form" class="bg-white rounded-xl shadow-xl p-6 sm:p-8 space-y-6 mt-0 mb-16 lg:my-20 border border-gray-100">
+          
+          <!-- Form header -->
+          <div class="mb-6 text-center lg:text-left">
+            <h2 class="text-2xl font-bold text-blue-900 mb-2">
+              Start Your Free Trial
+            </h2>
+            <p class="text-gray-600 text-sm">
+              Join thousands of successful course creators
+            </p>
+          </div>
+
+          <!-- Progress indicator -->
+          <div class="mb-6">
+            <div class="flex items-center justify-between text-xs text-gray-500 mb-2">
+              <span>Step 1 of 2</span>
+              <span>50%</span>
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-2">
+              <div class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 50%"></div>
+            </div>
+          </div>
+
+          <!-- Name fields -->
+          <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+            <div class="form-group">
+              <label for="firstName" class="block text-sm font-medium text-gray-700 mb-2">
+                First name <span class="text-red-500">*</span>
+              </label>
+              <input
+                id="firstName"
+                name="firstName"
+                type="text"
+                required
+                autocomplete="given-name"
+                class="form-input"
+                placeholder="John"
+              />
+              <div class="error-message" id="firstName-error"></div>
+            </div>
+            <div class="form-group">
+              <label for="lastName" class="block text-sm font-medium text-gray-700 mb-2">
+                Last name <span class="text-red-500">*</span>
+              </label>
+              <input
+                id="lastName"
+                name="lastName"
+                type="text"
+                required
+                autocomplete="family-name"
+                class="form-input"
+                placeholder="Doe"
+              />
+              <div class="error-message" id="lastName-error"></div>
+            </div>
+          </div>
+
+          <!-- Email field -->
+          <div class="form-group">
+            <label for="email" class="block text-sm font-medium text-gray-700 mb-2">
+              Email address <span class="text-red-500">*</span>
+            </label>
+            <input
+              id="email"
+              type="email"
+              required
+              placeholder="you@example.com"
+              autocomplete="email"
+              class="form-input"
+            />
+            <div class="error-message" id="email-error"></div>
+          </div>
+
+          <!-- Phone field -->
+          <div class="form-group">
+            <label for="phone" class="block text-sm font-medium text-gray-700 mb-2">
+              Phone number <span class="text-red-500">*</span>
+            </label>
+            <input
+              id="phone"
+              type="tel"
+              required
+              placeholder="(555) 123-4567"
+              autocomplete="tel"
+              class="form-input"
+            />
+            <div class="error-message" id="phone-error"></div>
+          </div>
+
+          <!-- Password field -->
+          <div class="form-group">
+            <label for="password" class="block text-sm font-medium text-gray-700 mb-2">
+              Create password <span class="text-red-500">*</span>
+            </label>
+            <div class="relative">
+              <input
+                id="password"
+                type="password"
+                minlength="8"
+                required
+                autocomplete="new-password"
+                class="form-input pr-10"
+                placeholder="Create a strong password"
+              />
+              <button
+                type="button"
+                id="togglePassword"
+                class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 transition-colors"
+                tabindex="-1"
+                aria-label="Toggle password visibility"
+              >
+                <svg id="eye" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <svg id="eyeOff" class="hidden h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 3l18 18" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </button>
+            </div>
+            
+            <!-- Password requirements -->
+            <div id="pw-req" class="mt-3 hidden rounded-lg bg-blue-50 p-4 border border-blue-200">
+              <p class="text-sm font-medium text-blue-800 mb-3">
+                Your password must contain:
+              </p>
+              <ul class="space-y-2 text-sm">
+                <li id="req-len" class="flex items-center text-red-600">
+                  <svg class="x-icon h-4 w-4 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  <svg class="v-icon h-4 w-4 mr-2 flex-shrink-0 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                  At least 8 characters
+                </li>
+                <li id="req-low" class="flex items-center text-red-600">
+                  <svg class="x-icon h-4 w-4 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  <svg class="v-icon h-4 w-4 mr-2 flex-shrink-0 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                  Lower-case letters
+                </li>
+                <li id="req-up" class="flex items-center text-red-600">
+                  <svg class="x-icon h-4 w-4 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  <svg class="v-icon h-4 w-4 mr-2 flex-shrink-0 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                  Upper-case letters
+                </li>
+                <li id="req-num" class="flex items-center text-red-600">
+                  <svg class="x-icon h-4 w-4 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  <svg class="v-icon h-4 w-4 mr-2 flex-shrink-0 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                  Numbers
+                </li>
+                <li id="req-sym" class="flex items-center text-red-600">
+                  <svg class="x-icon h-4 w-4 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  <svg class="v-icon h-4 w-4 mr-2 flex-shrink-0 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                  Symbols
+                </li>
+              </ul>
+              <div class="mt-3 text-xs text-blue-600 bg-blue-100 rounded px-2 py-1 inline-block">
+                ✓ = any 3 of the 4 categories
+              </div>
+            </div>
+            <div class="error-message" id="password-error"></div>
+          </div>
+
+          <!-- Stripe Card Element -->
+          <div class="form-group">
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Card details <span class="text-red-500">*</span>
+            </label>
+            <div id="payment-element" class="mt-2"></div>
+            <div class="error-message" id="payment-error"></div>
+          </div>
+
+          <!-- Terms and conditions -->
+          <div class="form-group">
+            <label class="flex items-start space-x-3 cursor-pointer">
+              <input
+                type="checkbox"
+                id="terms"
+                required
+                class="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              />
+              <span class="text-sm text-gray-600">
+                I agree to the 
+                <a href="#" class="text-blue-600 hover:text-blue-800 underline">Terms of Service</a> 
+                and 
+                <a href="#" class="text-blue-600 hover:text-blue-800 underline">Privacy Policy</a>
+              </span>
+            </label>
+          </div>
+
+          <!-- Submit button -->
+          <button
+            id="submit"
+            type="submit"
+            class="w-full flex items-center justify-center rounded-lg bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed transform hover:scale-[1.02] active:scale-[0.98]"
+            disabled
+          >
+            <span id="button-text">Start Free Trial</span>
+            <svg
+              id="spinner"
+              class="hidden ml-2 h-5 w-5 animate-spin border-2 border-t-transparent border-white rounded-full"
+              viewBox="0 0 24 24"
+            ></svg>
+          </button>
+
+          <!-- Security notice -->
+          <div class="text-center text-xs text-gray-500">
+            <div class="flex items-center justify-center space-x-2 mb-2">
+              <svg class="h-4 w-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" />
+              </svg>
+              <span>Your payment information is secure</span>
+            </div>
+            <p>Powered by Stripe • 256-bit SSL encryption</p>
+          </div>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <!-- Error modal -->
+  <div id="error-modal" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-black bg-opacity-50"></div>
+    <div class="absolute inset-0 flex items-center justify-center p-4">
+      <div class="bg-white rounded-lg p-6 max-w-md w-full shadow-xl">
+        <div class="flex items-center mb-4">
+          <svg class="h-6 w-6 text-red-500 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <h3 class="text-lg font-semibold text-gray-900">Error</h3>
+        </div>
+        <p id="error-message" class="text-gray-600 mb-4"></p>
+        <button id="close-error" class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Success notification -->
+  <div id="success-notification" class="fixed top-4 right-4 z-50 hidden">
+    <div class="bg-green-500 text-white px-6 py-4 rounded-lg shadow-lg flex items-center space-x-3">
+      <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+      </svg>
+      <span id="success-message"></span>
+    </div>
+  </div>
+
+  <!-- JavaScript -->
+  <script src="app-config.js"></script>
+  <script src="email-validator.js"></script>
+  <script src="routes.js"></script>
+  <script src="app.js"></script>
+</body>
+</html> 

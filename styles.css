@@ -1,0 +1,447 @@
+/* Custom CSS for Course Creator 360 Checkout */
+
+/* Base styles and custom properties */
+:root {
+  --primary-color: #2563eb;
+  --primary-hover: #1d4ed8;
+  --success-color: #10b981;
+  --error-color: #ef4444;
+  --warning-color: #f59e0b;
+  --text-primary: #1f2937;
+  --text-secondary: #6b7280;
+  --border-color: #d1d5db;
+  --border-focus: #2563eb;
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+}
+
+/* Smooth scrolling and better typography */
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  font-variation-settings: normal;
+}
+
+/* Form input styles */
+.form-input {
+  @apply block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-gray-900 placeholder-gray-400 shadow-sm transition-all duration-200;
+  @apply focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none;
+  @apply hover:border-gray-400;
+  @apply disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed;
+}
+
+.form-input:focus {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md), 0 0 0 3px rgb(37 99 235 / 0.1);
+}
+
+/* Form group spacing */
+.form-group {
+  @apply space-y-1;
+}
+
+/* Error message styling */
+.error-message {
+  @apply text-sm text-red-600 mt-1 min-h-[1.25rem] transition-all duration-200;
+  opacity: 0;
+  transform: translateY(-5px);
+}
+
+.error-message:not(:empty) {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Password strength indicator */
+.password-strength {
+  @apply mt-2 h-1 rounded-full overflow-hidden;
+}
+
+.password-strength-bar {
+  @apply h-full transition-all duration-300 ease-out;
+}
+
+.password-strength-bar.weak {
+  @apply bg-red-500;
+  width: 25%;
+}
+
+.password-strength-bar.fair {
+  @apply bg-yellow-500;
+  width: 50%;
+}
+
+.password-strength-bar.good {
+  @apply bg-blue-500;
+  width: 75%;
+}
+
+.password-strength-bar.strong {
+  @apply bg-green-500;
+  width: 100%;
+}
+
+/* Loading animations */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Animation classes */
+.animate-slide-in-up {
+  animation: slideInUp 0.3s ease-out;
+}
+
+.animate-slide-in-down {
+  animation: slideInDown 0.3s ease-out;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.2s ease-out;
+}
+
+/* Hover effects */
+.hover-lift {
+  transition: transform 0.2s ease-out, box-shadow 0.2s ease-out;
+}
+
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* Focus styles for accessibility */
+.focus-ring {
+  @apply focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2;
+}
+
+/* Custom checkbox styling */
+.custom-checkbox {
+  @apply relative inline-flex items-center;
+}
+
+.custom-checkbox input[type="checkbox"] {
+  @apply sr-only;
+}
+
+.custom-checkbox .checkmark {
+  @apply w-5 h-5 border-2 border-gray-300 rounded transition-all duration-200;
+  @apply flex items-center justify-center;
+}
+
+.custom-checkbox input[type="checkbox"]:checked + .checkmark {
+  @apply bg-blue-600 border-blue-600;
+}
+
+.custom-checkbox input[type="checkbox"]:checked + .checkmark::after {
+  content: '';
+  @apply w-2 h-2 bg-white rounded-sm;
+}
+
+/* Progress bar animation */
+.progress-bar {
+  @apply bg-gray-200 rounded-full h-2 overflow-hidden;
+}
+
+.progress-bar-fill {
+  @apply bg-blue-600 h-2 rounded-full transition-all duration-500 ease-out;
+  background: linear-gradient(90deg, #2563eb 0%, #3b82f6 100%);
+}
+
+/* Success/Error states */
+.form-input.success {
+  @apply border-green-500 focus:ring-green-500 focus:border-green-500;
+}
+
+.form-input.error {
+  @apply border-red-500 focus:ring-red-500 focus:border-red-500;
+}
+
+/* Button states */
+.btn-primary {
+  @apply bg-blue-600 text-white font-semibold py-2.5 px-4 rounded-lg transition-all duration-200;
+  @apply hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2;
+  @apply disabled:opacity-50 disabled:cursor-not-allowed;
+  @apply transform hover:scale-[1.02] active:scale-[0.98];
+}
+
+.btn-secondary {
+  @apply bg-gray-100 text-gray-700 font-medium py-2.5 px-4 rounded-lg transition-all duration-200;
+  @apply hover:bg-gray-200 focus:ring-2 focus:ring-gray-500 focus:ring-offset-2;
+  @apply disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+/* Modal animations */
+.modal-overlay {
+  @apply fixed inset-0 bg-black bg-opacity-50 transition-opacity duration-300;
+  backdrop-filter: blur(4px);
+}
+
+.modal-content {
+  @apply bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4;
+  animation: scaleIn 0.2s ease-out;
+}
+
+/* Notification animations */
+.notification {
+  @apply fixed top-4 right-4 z-50;
+  animation: slideInDown 0.3s ease-out;
+}
+
+.notification.hide {
+  animation: slideInUp 0.3s ease-out reverse;
+}
+
+/* Responsive design improvements */
+@media (max-width: 640px) {
+  .form-input {
+    @apply text-base; /* Prevent zoom on iOS */
+  }
+  
+  .btn-primary,
+  .btn-secondary {
+    @apply py-3; /* Larger touch targets on mobile */
+  }
+}
+
+/* Dark mode support (if needed) */
+@media (prefers-color-scheme: dark) {
+  /* Add dark mode styles here if needed */
+}
+
+/* Print styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .form-input {
+    border-width: 2px;
+  }
+  
+  .btn-primary {
+    border: 2px solid currentColor;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  
+  .hover-lift:hover {
+    transform: none;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-gray-100;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-gray-300 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-400;
+}
+
+/* Stripe Elements customization */
+#payment-element {
+  @apply rounded-lg border border-gray-300 p-3;
+  @apply focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500;
+}
+
+/* Password requirements styling */
+.password-requirement {
+  @apply flex items-center transition-all duration-200;
+}
+
+.password-requirement.valid {
+  @apply text-green-600;
+}
+
+.password-requirement.invalid {
+  @apply text-red-600;
+}
+
+.password-requirement .icon {
+  @apply mr-2 flex-shrink-0 transition-all duration-200;
+}
+
+/* Loading states */
+.loading {
+  @apply opacity-50 pointer-events-none;
+}
+
+.loading-spinner {
+  @apply animate-spin;
+}
+
+/* Success animations */
+.success-checkmark {
+  @apply text-green-500;
+  animation: scaleIn 0.3s ease-out;
+}
+
+/* Error shake animation */
+@keyframes shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  10%, 30%, 50%, 70%, 90% {
+    transform: translateX(-5px);
+  }
+  20%, 40%, 60%, 80% {
+    transform: translateX(5px);
+  }
+}
+
+.shake {
+  animation: shake 0.5s ease-in-out;
+}
+
+/* Tooltip styles */
+.tooltip {
+  @apply relative;
+}
+
+.tooltip::after {
+  content: attr(data-tooltip);
+  @apply absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-900 rounded opacity-0 pointer-events-none transition-opacity duration-200;
+  white-space: nowrap;
+  z-index: 10;
+}
+
+.tooltip:hover::after {
+  @apply opacity-100;
+}
+
+/* Accessibility improvements */
+.sr-only {
+  @apply absolute w-px h-px p-0 -m-px overflow-hidden whitespace-nowrap border-0;
+}
+
+/* Focus visible for keyboard navigation */
+.focus-visible {
+  @apply focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2;
+}
+
+/* Skip link for accessibility */
+.skip-link {
+  @apply absolute top-4 left-4 -translate-y-full bg-blue-600 text-white px-4 py-2 rounded-lg z-50;
+  @apply focus:translate-y-0;
+}
+
+/* Form validation styles */
+.form-group.has-error .form-input {
+  @apply border-red-500 focus:ring-red-500 focus:border-red-500;
+}
+
+.form-group.has-success .form-input {
+  @apply border-green-500 focus:ring-green-500 focus:border-green-500;
+}
+
+/* Character counter */
+.char-counter {
+  @apply text-xs text-gray-500 mt-1 text-right;
+}
+
+.char-counter.near-limit {
+  @apply text-yellow-600;
+}
+
+.char-counter.at-limit {
+  @apply text-red-600;
+}
+
+/* Auto-save indicator */
+.auto-save-indicator {
+  @apply text-xs text-gray-500 flex items-center space-x-1;
+}
+
+.auto-save-indicator.saving {
+  @apply text-blue-600;
+}
+
+.auto-save-indicator.saved {
+  @apply text-green-600;
+}
+
+.auto-save-indicator.error {
+  @apply text-red-600;
+} 
