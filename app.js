@@ -406,18 +406,18 @@ class CheckoutApp {
           }
         });
 
-        // Create and mount the payment element
-        this.paymentElement = this.stripeElements.create('payment', {
-          fields: {
-            billingDetails: {
-              address: 'never', // We collect address separately
-            }
-          },
-          paymentMethodOrder: ['card'], // Only allow cards, no other payment methods
-          terms: {
-            card: 'never' // Don't show card terms
+              // Create and mount the payment element
+      this.paymentElement = this.stripeElements.create('payment', {
+        fields: {
+          billingDetails: {
+            address: 'auto', // Collect address automatically
           }
-        });
+        },
+        paymentMethodOrder: ['card'], // Only allow cards, no other payment methods
+        terms: {
+          card: 'never' // Don't show card terms
+        }
+      });
 
         // Clear loading state and mount
         paymentElementDiv.innerHTML = '';
@@ -1012,14 +1012,11 @@ class CheckoutApp {
    * Confirm payment with Stripe
    */
   async confirmPayment(clientSecret) {
-    // Prepare billing details with required address information
+    // Prepare billing details - Stripe will collect address automatically
     const billingDetails = {
       name: `${this.elements['firstName'].value.trim()} ${this.elements['lastName'].value.trim()}`,
       email: this.elements['email'].value.trim(),
-      phone: this.elements['phone'].value.trim(),
-      address: {
-        country: 'US' // Default to US since we're not collecting address
-      }
+      phone: this.elements['phone'].value.trim()
     };
 
     try {
