@@ -50,7 +50,6 @@ const baseConfig = {
   // Validation patterns
   validation: {
     emailRegex: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-    phoneRegex: /^[\+]?[1-9][\d]{0,15}$/,
     nameRegex: /^[a-zA-Z\s\-']+$/
   }
 };

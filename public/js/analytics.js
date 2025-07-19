@@ -126,19 +126,7 @@ class AnalyticsManager {
     this.trackEvent('mailgun_interaction', eventData);
   }
 
-  /**
-   * Track Twilio API interactions (if you add Twilio later)
-   */
-  trackTwilioEvent(action, twilioData = {}) {
-    const eventData = {
-      action,
-      service: 'twilio',
-      ...twilioData
-    };
-    
-    console.log('📱 Twilio Event:', eventData);
-    this.trackEvent('twilio_interaction', eventData);
-  }
+
 
   /**
    * Track performance metrics

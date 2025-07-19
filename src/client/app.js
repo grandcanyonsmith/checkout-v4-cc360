@@ -87,7 +87,7 @@ class CheckoutApp {
   async setupDOM() {
     const elementIds = [
       'loading-overlay', 'payment-form', 'submit', 'spinner', 'button-text',
-      'firstName', 'lastName', 'email', 'phone', 'password', 'togglePassword',
+      'firstName', 'lastName', 'email', 'password', 'togglePassword',
       'eye', 'eyeOff', 'pw-req', 'payment-element', 'terms',
       'error-modal', 'error-message', 'close-error',
       'success-notification', 'success-message',
@@ -216,7 +216,7 @@ class CheckoutApp {
           this.elements['password'].addEventListener('input', this.debounce(this.validatePassword.bind(this), this.config.ui.debounceDelay));
 
     // Form field validation
-    ['firstName', 'lastName', 'email', 'phone'].forEach(field => {
+    ['firstName', 'lastName', 'email'].forEach(field => {
       this.elements[field].addEventListener('input', this.debounce(() => this.validateField(field), this.config.ui.debounceDelay));
       this.elements[field].addEventListener('blur', () => this.validateField(field));
     });
@@ -390,7 +390,7 @@ class CheckoutApp {
     
     // Then override with URL parameters
     const qs = new URLSearchParams(location.search);
-    const fields = ['firstName', 'lastName', 'email', 'phone'];
+    const fields = ['firstName', 'lastName', 'email'];
 
     fields.forEach(field => {
       const value = qs.get(field);
@@ -480,7 +480,6 @@ class CheckoutApp {
       body: JSON.stringify({
         email: this.elements['email'].value.trim(),
         name: `${this.elements['firstName'].value.trim()} ${this.elements['lastName'].value.trim()}`,
-        phone: this.elements['phone'].value.trim(),
         subscriptionType: this.state.subscriptionType,
         priceId: config ? config.priceId : pricing.priceId
       })
@@ -499,7 +498,7 @@ class CheckoutApp {
    * Validate all form fields
    */
   async validateAllFields() {
-    const fields = ['firstName', 'lastName', 'email', 'phone', 'password'];
+    const fields = ['firstName', 'lastName', 'email', 'password'];
     let isValid = true;
 
     for (const field of fields) {
@@ -555,13 +554,7 @@ class CheckoutApp {
         }
         break;
 
-      case 'phone':
-        const cleanPhone = value.replace(/\D/g, '');
-        if (!this.config.validation.phoneRegex.test(cleanPhone)) {
-          this.showFieldError(fieldName, 'Please enter a valid phone number');
-          return false;
-        }
-        break;
+
 
       case 'firstName':
       case 'lastName':
@@ -651,8 +644,7 @@ class CheckoutApp {
     // Prepare billing details
     const billingDetails = {
       name: `${this.elements['firstName'].value.trim()} ${this.elements['lastName'].value.trim()}`,
-      email: this.elements['email'].value.trim(),
-      phone: this.elements['phone'].value.trim()
+      email: this.elements['email'].value.trim()
     };
 
     let result;
@@ -701,7 +693,6 @@ class CheckoutApp {
       session_id: this.state.sessionId,
       customer_id: this.state.customerId,
       subscription_type: this.state.subscriptionType,
-      phone: this.elements['phone'].value,
       email: this.elements['email'].value,
       firstName: this.elements['firstName'].value,
       lastName: this.elements['lastName'].value
@@ -732,7 +723,6 @@ class CheckoutApp {
       this.elements['firstName'].value.trim() &&
       this.elements['lastName'].value.trim() &&
       this.elements['email'].value.trim() &&
-      this.elements['phone'].value.trim() &&
       this.isValidPassword() &&
       this.elements['terms'].checked
     );
@@ -900,7 +890,7 @@ class CheckoutApp {
    * Setup form auto-save
    */
   setupFormAutoSave() {
-    const autoSaveFields = ['firstName', 'lastName', 'email', 'phone'];
+    const autoSaveFields = ['firstName', 'lastName', 'email'];
     
     autoSaveFields.forEach(field => {
       this.elements[field].addEventListener('input', this.debounce(() => {
@@ -917,8 +907,7 @@ class CheckoutApp {
       const formData = {
         firstName: this.elements['firstName'].value,
         lastName: this.elements['lastName'].value,
-        email: this.elements['email'].value,
-        phone: this.elements['phone'].value
+        email: this.elements['email'].value
       };
 
       localStorage.setItem('cc360_checkout_data', JSON.stringify(formData));
@@ -966,7 +955,6 @@ class CheckoutApp {
       firstName: 'First name',
       lastName: 'Last name',
       email: 'Email address',
-      phone: 'Phone number',
       password: 'Password'
     };
     return labels[fieldName] || fieldName;
@@ -1001,17 +989,7 @@ class CheckoutApp {
     return this.config.validation.emailRegex.test(email);
   }
 
-  /**
-   * Format phone number
-   */
-  formatPhoneNumber(phone) {
-    const cleaned = phone.replace(/\D/g, '');
-    const match = cleaned.match(/^(\d{3})(\d{3})(\d{4})$/);
-    if (match) {
-      return `(${match[1]}) ${match[2]}-${match[3]}`;
-    }
-    return phone;
-  }
+
 }
 
 // Analytics and tracking

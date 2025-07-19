@@ -87,7 +87,7 @@ class CheckoutApp {
   async setupDOM() {
     const elementIds = [
       'loading-overlay', 'payment-form', 'submit', 'spinner', 'button-text',
-      'firstName', 'lastName', 'email', 'phone', 'password', 'togglePassword',
+      'firstName', 'lastName', 'email', 'password', 'togglePassword',
       'eye', 'eyeOff', 'pw-req', 'payment-element', 'terms',
       'error-modal', 'error-message', 'close-error',
       'success-notification', 'success-message',
@@ -204,7 +204,7 @@ class CheckoutApp {
     }
 
     // Real-time validation
-    const fields = ['firstName', 'lastName', 'email', 'phone', 'password'];
+    const fields = ['firstName', 'lastName', 'email', 'password'];
     fields.forEach(field => {
       const element = this.elements[field];
       if (element) {
@@ -379,7 +379,7 @@ class CheckoutApp {
    * Validate all form fields
    */
   async validateAllFields() {
-    const fields = ['firstName', 'lastName', 'email', 'phone', 'password'];
+    const fields = ['firstName', 'lastName', 'email', 'password'];
     const results = await Promise.all(
       fields.map(field => this.validateField(field))
     );
@@ -424,13 +424,7 @@ class CheckoutApp {
         }
         break;
 
-      case 'phone':
-        const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
-        if (!phoneRegex.test(value.replace(/\D/g, ''))) {
-          this.showFieldError(fieldName, 'Please enter a valid phone number');
-          return false;
-        }
-        break;
+
 
       case 'password':
         if (!this.isValidPassword()) {
@@ -537,7 +531,7 @@ class CheckoutApp {
    * Check if form is ready for submission
    */
   checkFormReady() {
-    const requiredFields = ['firstName', 'lastName', 'email', 'phone', 'password'];
+    const requiredFields = ['firstName', 'lastName', 'email', 'password'];
     const hasAllFields = requiredFields.every(field => 
       this.elements[field] && this.elements[field].value.trim()
     );
@@ -693,7 +687,7 @@ class CheckoutApp {
    * Setup form auto-save
    */
   setupFormAutoSave() {
-    const fields = ['firstName', 'lastName', 'email', 'phone'];
+    const fields = ['firstName', 'lastName', 'email'];
     fields.forEach(field => {
       const element = this.elements[field];
       if (element) {
@@ -707,7 +701,7 @@ class CheckoutApp {
    */
   autoSaveForm() {
     const data = {};
-    ['firstName', 'lastName', 'email', 'phone'].forEach(field => {
+    ['firstName', 'lastName', 'email'].forEach(field => {
       if (this.elements[field]) {
         data[field] = this.elements[field].value;
       }
@@ -744,7 +738,6 @@ class CheckoutApp {
       firstName: 'First name',
       lastName: 'Last name',
       email: 'Email address',
-      phone: 'Phone number',
       password: 'Password'
     };
     return labels[fieldName] || fieldName;
