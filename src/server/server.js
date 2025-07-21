@@ -118,13 +118,12 @@ app.post('/api/create-payment-intent', async (req, res) => {
 // Handle subscription creation
 app.post('/api/create-subscription', async (req, res) => {
   try {
-    const { email, name, phone, subscriptionType, priceId } = req.body;
+    const { email, name, subscriptionType, priceId } = req.body;
 
     // Create customer
     const customer = await stripe.customers.create({
       email,
       name,
-      phone,
       metadata: {
         source: 'checkout_page',
         subscription_type: subscriptionType

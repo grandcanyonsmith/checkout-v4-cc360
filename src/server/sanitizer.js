@@ -59,15 +59,7 @@ class Sanitizer {
     return email;
   }
 
-  /**
-   * Sanitize phone number
-   */
-  static sanitizePhone(phone) {
-    if (typeof phone !== 'string') return '';
-    
-    // Keep only digits and + symbol
-    return phone.replace(/[^\d+]/g, '');
-  }
+
 
   /**
    * Sanitize name (first/last)
@@ -155,7 +147,6 @@ class Sanitizer {
       email: this.sanitizeEmail,
       firstName: this.sanitizeName,
       lastName: this.sanitizeName,
-      phone: this.sanitizePhone,
       password: this.sanitizePassword
     });
   }
