@@ -49,7 +49,7 @@ const baseConfig = {
 const clientConfig = {
   // Stripe public configuration
   stripe: {
-    publishableKey: window.STRIPE_PUBLISHABLE_KEY || ''
+    publishableKey: window.STRIPE_PUBLISHABLE_KEY || 'pk_live_51LNznbBnnqL8bKFQDpqXsQJ00WefQSSLMf2CZWr0sarinvaalkyY0BE7q7swLzIt49RSiCgBAP5uPHjU8fBNDsf0008MSXCQFU'
   },
   
   // URLs
