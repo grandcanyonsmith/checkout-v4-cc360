@@ -20,7 +20,8 @@ app.use(cors({
     'https://checkout-v4-cc360-fmef75bkf-grandcanyonsmiths-projects.vercel.app',
     'https://checkout-v4-cc360-14ub5kcpm-grandcanyonsmiths-projects.vercel.app',
     'https://checkout-v4-cc360-9kuqj45qr-grandcanyonsmiths-projects.vercel.app',
-    'https://checkout-v4-cc360-oft8y1u3u-grandcanyonsmiths-projects.vercel.app'
+    'https://checkout-v4-cc360-oft8y1u3u-grandcanyonsmiths-projects.vercel.app',
+    'https://checkout-v4-cc360-bpfas6wba-grandcanyonsmiths-projects.vercel.app'
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
