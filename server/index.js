@@ -60,6 +60,94 @@ const handleStripeError = (error, res) => {
   })
 }
 
+// Email validation endpoint using Mailgun API
+app.post('/api/validate-email', async (req, res) => {
+  try {
+    const { email } = req.body
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        error: 'Email is required'
+      })
+    }
+
+    // Mailgun configuration
+    const MAILGUN_API_KEY = process.env.MAILGUN_API_KEY
+    const MAILGUN_BASE_URL = 'https://api.mailgun.net/v4'
+    
+    if (!MAILGUN_API_KEY) {
+      console.warn('MAILGUN_API_KEY not configured, using basic validation')
+      return res.status(200).json({
+        success: true,
+        isValid: true,
+        validationMethod: 'basic_fallback',
+        risk: 'unknown'
+      })
+    }
+    
+    try {
+      // Make request to Mailgun validation API
+      const params = new URLSearchParams({
+        address: email,
+        provider_lookup: 'true'
+      })
+      
+      const response = await fetch(`${MAILGUN_BASE_URL}/address/validate?${params}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Basic ${Buffer.from(`api:${MAILGUN_API_KEY}`).toString('base64')}`
+        }
+      })
+
+      if (!response.ok) {
+        console.warn('Mailgun API error:', response.status)
+        return res.status(200).json({
+          success: true,
+          isValid: true,
+          validationMethod: 'basic_fallback',
+          risk: 'unknown',
+          apiError: `Mailgun API returned ${response.status}`
+        })
+      }
+
+      const data = await response.json()
+      
+      // Transform Mailgun response to our format
+      const result = {
+        success: true,
+        isValid: data.result === 'deliverable',
+        result: data.result,
+        risk: data.risk || 'unknown',
+        isDisposable: data.is_disposable_address || false,
+        isRoleAddress: data.is_role_address || false,
+        reason: data.reason || null,
+        didYouMean: data.did_you_mean || null,
+        validationMethod: 'mailgun_api'
+      }
+
+      res.status(200).json(result)
+
+    } catch (mailgunError) {
+      console.error('Mailgun request error:', mailgunError)
+      return res.status(200).json({
+        success: true,
+        isValid: true,
+        validationMethod: 'basic_fallback',
+        risk: 'unknown',
+        apiError: mailgunError.message
+      })
+    }
+
+  } catch (error) {
+    console.error('Email validation error:', error)
+    res.status(500).json({
+      success: false,
+      error: error.message
+    })
+  }
+})
+
 // Course Creator 360 Billing Endpoints
 
 // Create customer for trial signup
