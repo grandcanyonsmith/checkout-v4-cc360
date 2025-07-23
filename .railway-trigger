@@ -1,0 +1,6 @@
+# Railway deployment trigger
+# This file forces Railway to rebuild when changed
+DEPLOYMENT_TRIGGER=2025-07-23-22:25:00
+LATEST_COMMIT=35f61c7
+CORS_DOMAIN=signup.coursecreator360.com
+EMAIL_VALIDATION=enabled 
