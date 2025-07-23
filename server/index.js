@@ -403,7 +403,9 @@ app.listen(PORT, () => {
   console.log(`🚀 Course Creator 360 server running on port ${PORT}`)
   console.log(`📋 Health check: http://localhost:${PORT}/api/health`)
   console.log(`💳 Billing API: http://localhost:${PORT}/api/billing/*`)
+  console.log(`📧 Email validation: http://localhost:${PORT}/api/validate-email`)
   console.log(`🔐 Stripe connected: ${!!process.env.STRIPE_SECRET_KEY}`)
+  console.log(`🔐 Mailgun connected: ${!!process.env.MAILGUN_API_KEY}`)
 })
 
 // Export for Vercel serverless functions
