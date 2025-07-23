@@ -1,14 +1,7 @@
 import express from 'express'
 import cors from 'cors'
-import path from 'path'
-import { fileURLToPath } from 'url'
-import { dirname } from 'path'
 import { config } from 'dotenv'
 import Stripe from 'stripe'
-
-// ES module setup
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = dirname(__filename)
 
 // Load environment variables
 config()
@@ -18,14 +11,23 @@ const PORT = process.env.PORT || 3001
 
 // Enhanced CORS configuration
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002', 'http://localhost:5173', 'https://checkout-v4-cc360.vercel.app'],
+  origin: [
+    'http://localhost:3000', 
+    'http://localhost:3001', 
+    'http://localhost:3002', 
+    'http://localhost:5173',
+    'https://checkout-v4-cc360.vercel.app',
+    'https://checkout-v4-cc360-fmef75bkf-grandcanyonsmiths-projects.vercel.app',
+    'https://checkout-v4-cc360-14ub5kcpm-grandcanyonsmiths-projects.vercel.app',
+    'https://checkout-v4-cc360-9kuqj45qr-grandcanyonsmiths-projects.vercel.app',
+    'https://checkout-v4-cc360-oft8y1u3u-grandcanyonsmiths-projects.vercel.app'
+  ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }))
 
 app.use(express.json({ limit: '10mb' }))
-app.use(express.static(path.join(__dirname, '../public')))
 
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
@@ -371,9 +373,20 @@ app.post('/api/create-customer', async (req, res) => {
   return app._router.handle(req, res)
 })
 
-// Serve React app for all other routes
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../public/index.html'))
+// Default route for API health check
+app.get('/', (req, res) => {
+  res.json({ 
+    message: 'Course Creator 360 API Server',
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    endpoints: [
+      '/api/health',
+      '/api/validate-email',
+      '/api/billing/create-customer',
+      '/api/billing/create-setup-intent',
+      '/api/billing/start-trial'
+    ]
+  })
 })
 
 // Enhanced error handling middleware
