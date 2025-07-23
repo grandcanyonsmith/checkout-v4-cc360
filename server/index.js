@@ -16,6 +16,7 @@ app.use(cors({
     'http://localhost:3001', 
     'http://localhost:3002', 
     'http://localhost:5173',
+    'https://signup.coursecreator360.com',
     'https://checkout-v4-cc360.vercel.app',
     'https://checkout-v4-cc360-fmef75bkf-grandcanyonsmiths-projects.vercel.app',
     'https://checkout-v4-cc360-14ub5kcpm-grandcanyonsmiths-projects.vercel.app',
