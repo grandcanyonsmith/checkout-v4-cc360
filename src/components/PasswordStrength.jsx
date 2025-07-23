@@ -29,10 +29,6 @@ export default function PasswordStrength({ password, strength }) {
           </li>
         ))}
       </ul>
-      
-      <div className="mt-3 text-xs text-primary-600 bg-primary-100 rounded px-2 py-1 inline-block">
-        ✓ = any 3 of the {passwordRequirements.length} categories ({strength.passedCount}/{passwordRequirements.length} met)
-      </div>
     </div>
   )
 } 

@@ -10,21 +10,6 @@ export default function Header() {
             className="h-8 w-auto transition-transform group-hover:scale-105"
             alt="Course Creator 360"
           />
-          <span className="text-lg font-bold text-primary-900 tracking-tight hidden sm:inline">
-            Course Creator 360
-          </span>
-        </div>
-        
-        {/* Trust indicators */}
-        <div className="hidden md:flex items-center space-x-6 text-sm text-gray-600">
-          <div className="flex items-center space-x-2">
-            <CheckCircleIcon className="h-5 w-5 text-green-500" />
-            <span className="font-medium">30-Day Free Trial</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <CheckCircleIcon className="h-5 w-5 text-green-500" />
-            <span className="font-medium">Cancel Anytime</span>
-          </div>
         </div>
       </div>
     </header>

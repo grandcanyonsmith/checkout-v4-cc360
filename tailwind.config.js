@@ -7,43 +7,65 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+        sans: ['Helvetica Neue', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
       },
       colors: {
         primary: {
-          50: '#eff6ff',
-          100: '#dbeafe',
-          200: '#bfdbfe',
-          300: '#93c5fd',
-          400: '#60a5fa',
-          500: '#3b82f6',
-          600: '#2563eb',
-          700: '#1d4ed8',
-          800: '#1e40af',
-          900: '#1e3a8a',
-          950: '#172554',
+          50: '#f0f8ff',
+          100: '#e0f0ff',
+          200: '#c7e3ff',
+          300: '#a6d0ff',
+          400: '#7bb8ff',
+          500: '#0475FF',
+          600: '#035ce6',
+          700: '#0349cc',
+          800: '#0236b3',
+          900: '#111D2C',
         },
+        brand: {
+          'primary': '#0475FF',
+          'dark': '#111D2C',
+          'darker': '#0E325E',
+          'black': '#000000',
+          'accent': '#E2FF00',
+          'danger': '#FF2F00',
+          'gray-dark': '#131313',
+          'create': '#1D4ED8',
+          'market': '#E2FF00',
+          'sellscale': '#FF2F00',
+        },
+        blue: {
+          primary: '#0475FF',
+          dark: '#0E325E',
+          darker: '#111D2C',
+        }
       },
       animation: {
-        'fade-in': 'fadeIn 0.5s ease-in-out',
-        'slide-in': 'slideIn 0.3s ease-out',
-        'bounce-in': 'bounceIn 0.6s ease-out',
+        'fade-in': 'fade-in 0.5s ease-out',
+        'slide-in': 'slide-in 0.3s ease-out',
       },
       keyframes: {
-        fadeIn: {
-          '0%': { opacity: '0' },
-          '100%': { opacity: '1' },
+        'fade-in': {
+          '0%': {
+            opacity: '0',
+            transform: 'translateY(10px)'
+          },
+          '100%': {
+            opacity: '1',
+            transform: 'translateY(0)'
+          },
         },
-        slideIn: {
-          '0%': { transform: 'translateY(-10px)', opacity: '0' },
-          '100%': { transform: 'translateY(0)', opacity: '1' },
-        },
-        bounceIn: {
-          '0%': { transform: 'scale(0.3)', opacity: '0' },
-          '50%': { transform: 'scale(1.05)', opacity: '1' },
-          '100%': { transform: 'scale(1)', opacity: '1' },
-        },
-      },
+        'slide-in': {
+          '0%': {
+            opacity: '0',
+            maxHeight: '0'
+          },
+          '100%': {
+            opacity: '1',
+            maxHeight: '300px'
+          },
+        }
+      }
     },
   },
   plugins: [],

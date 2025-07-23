@@ -46,25 +46,6 @@ export default function OrderSummary({ pricing, subscriptionType }) {
           )}
         </div>
 
-        {/* Trial Information */}
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-          <div className="text-center">
-            <div className="text-2xl font-bold text-green-800 mb-1">
-              30-Day Free Trial
-            </div>
-            <p className="text-sm text-green-700 mb-2">
-              Start today, no payment required
-            </p>
-            <p className="text-xs text-green-600">
-              Trial ends {trialEndDate.toLocaleDateString('en-US', { 
-                month: 'long', 
-                day: 'numeric', 
-                year: 'numeric' 
-              })}
-            </p>
-          </div>
-        </div>
-
         {/* Pricing Details */}
         <div className="space-y-4">
           <div className="flex justify-between items-center py-3 border-b border-gray-200">
@@ -129,7 +110,7 @@ export default function OrderSummary({ pricing, subscriptionType }) {
               💰 Risk-Free Guarantee
             </div>
             <p className="text-xs text-blue-700">
-              Cancel anytime during your trial. No questions asked.
+              No questions asked guarantee during your trial period.
             </p>
           </div>
         </div>
@@ -138,7 +119,6 @@ export default function OrderSummary({ pricing, subscriptionType }) {
         <div className="text-center text-xs text-gray-500 space-y-1">
           <p>🔒 Secure checkout powered by Stripe</p>
           <p>📧 Questions? Email support@coursecreator360.com</p>
-          <p>📞 Call us: 1-800-CC360-HELP</p>
         </div>
       </div>
     </div>
