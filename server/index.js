@@ -408,6 +408,7 @@ app.listen(PORT, () => {
   console.log(`📧 Email validation: http://localhost:${PORT}/api/validate-email`)
   console.log(`🔐 Stripe connected: ${!!process.env.STRIPE_SECRET_KEY}`)
   console.log(`🔐 Mailgun connected: ${!!process.env.MAILGUN_API_KEY}`)
+  console.log(`🌐 CORS enabled for signup.coursecreator360.com`)
 })
 
 // Export for Vercel serverless functions
