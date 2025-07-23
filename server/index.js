@@ -146,7 +146,7 @@ app.post('/api/billing/create-setup-intent', async (req, res) => {
     // Create SetupIntent for validating and saving the payment method
     const setupIntent = await stripe.setupIntents.create({
       customer: customerId,
-      automatic_payment_methods: { enabled: true },
+      payment_method_types: ['card'], // Match frontend configuration
       usage: 'off_session', // Required for future automatic billing
       metadata: {
         type: 'trial_signup',
