@@ -1,0 +1,364 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+    /* Prevent zoom on iOS when focusing inputs */
+    -webkit-text-size-adjust: 100%;
+  }
+  
+  body {
+    @apply bg-white text-gray-900;
+    /* Prevent pull-to-refresh on mobile */
+    overscroll-behavior-y: contain;
+  }
+  
+  /* Prevent tap highlight on iOS */
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    @apply bg-gray-100;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gray-300 rounded-full;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-400;
+  }
+}
+
+@layer components {
+  /* Form components with better mobile support */
+  .form-input {
+    @apply w-full px-3 py-3 sm:px-4 sm:py-3 border border-gray-300 rounded-lg text-base sm:text-sm placeholder-gray-500 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors duration-200;
+    /* Prevent zoom on iOS */
+    font-size: 16px;
+  }
+  
+  @screen sm {
+    .form-input {
+      font-size: 0.875rem; /* 14px */
+    }
+  }
+  
+  .form-input.error {
+    @apply border-red-500 focus:ring-red-200 focus:border-red-500;
+  }
+  
+  .form-input.success {
+    @apply border-green-500 focus:ring-green-200 focus:border-green-500;
+  }
+  
+  .form-label {
+    @apply block text-sm font-medium text-gray-700 mb-2;
+  }
+  
+  .error-message {
+    @apply mt-2 text-sm text-red-600 animate-slide-in;
+  }
+  
+  .success-message {
+    @apply mt-2 text-sm text-green-600 animate-slide-in;
+  }
+  
+  /* Button components with touch optimization */
+  .btn {
+    @apply inline-flex items-center justify-center px-4 py-3 border border-transparent text-base sm:text-sm font-medium rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all duration-200 touch-manipulation;
+    /* Minimum touch target size */
+    min-height: 44px;
+  }
+  
+  .btn-primary {
+    @apply btn bg-primary-600 text-white hover:bg-primary-700 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  
+  .btn-secondary {
+    @apply btn bg-white text-gray-700 border-gray-300 hover:bg-gray-50 focus:ring-primary-500;
+  }
+  
+  /* Card components with mobile margins */
+  .card {
+    @apply bg-white rounded-xl shadow-lg border border-gray-100 mx-4 sm:mx-0;
+  }
+  
+  .card-header {
+    @apply px-4 py-4 sm:px-6 sm:py-4 border-b border-gray-100;
+  }
+  
+  .card-body {
+    @apply px-4 py-4 sm:px-6 sm:py-4;
+  }
+  
+  .card-footer {
+    @apply px-4 py-4 sm:px-6 sm:py-4 border-t border-gray-100 bg-gray-50 rounded-b-xl;
+  }
+  
+  /* Form group spacing */
+  .form-group {
+    @apply space-y-2;
+  }
+  
+  /* Toast notification positioning */
+  .toast-container {
+    @apply fixed top-4 right-4 z-50 space-y-2;
+  }
+  
+  @screen max-sm {
+    .toast-container {
+      @apply left-4 right-4 top-4;
+    }
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  
+  .container-responsive {
+    @apply mx-auto px-4 sm:px-6 lg:px-8;
+  }
+  
+  /* Loading animations */
+  .spinner {
+    @apply animate-spin rounded-full border-2 border-transparent border-t-current;
+  }
+  
+  /* Focus utilities with better visibility */
+  .focus-ring {
+    @apply focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2;
+  }
+  
+  /* Touch-friendly utilities */
+  .touch-manipulation {
+    touch-action: manipulation;
+  }
+  
+  /* Safe area utilities for notched devices */
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  .safe-left {  
+    padding-left: env(safe-area-inset-left);
+  }
+  
+  .safe-right {
+    padding-right: env(safe-area-inset-right);
+  }
+  
+  /* Better mobile layouts */
+  .mobile-stack {
+    @apply flex flex-col space-y-4;
+  }
+  
+  @screen sm {
+    .mobile-stack {
+      @apply flex-row space-y-0 space-x-4;
+    }
+  }
+  
+  /* Improved mobile typography */
+  .mobile-text-lg {
+    @apply text-lg;
+  }
+  
+  @screen sm {
+    .mobile-text-lg {
+      @apply text-xl;
+    }
+  }
+  
+  .mobile-text-base {
+    @apply text-base;
+  }
+  
+  @screen sm {
+    .mobile-text-base {
+      @apply text-sm;
+    }
+  }
+  
+  /* Stripe Elements mobile optimization */
+  .StripeElement {
+    background-color: transparent;
+    padding: 12px 0;
+  }
+  
+  .StripeElement--focus {
+    outline: none;
+  }
+  
+  .StripeElement--invalid {
+    border-color: #ef4444;
+  }
+  
+  .StripeElement--webkit-autofill {
+    background: transparent !important;
+  }
+  
+  /* Password strength indicator mobile styles */
+  .password-requirements {
+    @apply grid grid-cols-1 gap-2;
+  }
+  
+  @screen sm {
+    .password-requirements {
+      @apply grid-cols-2;
+    }
+  }
+  
+  /* Modal mobile optimization */
+  .modal-mobile {
+    @apply fixed inset-0 z-50 overflow-y-auto;
+  }
+  
+  .modal-content-mobile {
+    @apply min-h-full flex items-end sm:items-center justify-center p-0 sm:p-4;
+  }
+  
+  .modal-panel-mobile {
+    @apply w-full max-w-md transform overflow-hidden rounded-t-2xl sm:rounded-2xl bg-white text-left align-middle shadow-xl transition-all;
+  }
+  
+  @screen max-sm {
+    .modal-panel-mobile {
+      @apply rounded-t-2xl rounded-b-none min-h-[50vh];
+    }
+  }
+  
+  /* Enhanced accessibility */
+  .sr-only-focusable {
+    @apply sr-only;
+  }
+  
+  .sr-only-focusable:focus {
+    @apply not-sr-only absolute top-0 left-0 z-50 p-2 bg-white border border-gray-200 rounded;
+  }
+  
+  /* Improved contrast for better readability */
+  .high-contrast {
+    @apply text-gray-900 bg-white;
+  }
+  
+  .high-contrast-inverse {
+    @apply text-white bg-gray-900;
+  }
+  
+  /* Better spacing for mobile */
+  .mobile-section-spacing {
+    @apply py-6 px-4;
+  }
+  
+  @screen sm {
+    .mobile-section-spacing {
+      @apply py-8 px-6;
+    }
+  }
+  
+  @screen lg {
+    .mobile-section-spacing {
+      @apply py-12 px-8;
+    }
+  }
+  
+  /* Enhanced form field spacing */
+  .form-field-mobile {
+    @apply space-y-3;
+  }
+  
+  @screen sm {
+    .form-field-mobile {
+      @apply space-y-4;
+    }
+  }
+  
+  /* Better button sizing for mobile */
+  .btn-mobile {
+    @apply py-3 px-4 text-base min-h-[44px];
+  }
+  
+  @screen sm {
+    .btn-mobile {
+      @apply py-2 px-4 text-sm min-h-[40px];
+    }
+  }
+}
+
+/* Mobile-specific improvements */
+@media (max-width: 640px) {
+  /* Ensure form inputs don't zoom on iOS */
+  input[type="text"],
+  input[type="email"],
+  input[type="tel"],
+  input[type="password"],
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+  
+  /* Better spacing for mobile cards */
+  .card {
+    margin: 0.5rem;
+    border-radius: 1rem;
+  }
+  
+  /* Improved mobile button styling */
+  button {
+    min-height: 44px;
+    touch-action: manipulation;
+  }
+  
+  /* Better mobile modal positioning */
+  .modal-panel-mobile {
+    margin: 0;
+    border-radius: 1rem 1rem 0 0;
+    min-height: 60vh;
+    max-height: 90vh;
+  }
+}
+
+/* Improved accessibility and focus management */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .form-input {
+    @apply border-2 border-gray-900;
+  }
+  
+  .btn-primary {
+    @apply bg-gray-900 border-2 border-gray-900;
+  }
+  
+  .btn-secondary {
+    @apply border-2 border-gray-900 text-gray-900;
+  }
+}
+
+/* Dark mode preparation (if needed in future) */
+@media (prefers-color-scheme: dark) {
+  /* Dark mode styles can be added here if needed */
+} 

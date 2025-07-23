@@ -1,192 +1,191 @@
-# Course Creator 360 Checkout System
+# Course Creator 360 - Modern React Checkout
 
-A modern, secure, and maintainable checkout system for Course Creator 360 with Stripe integration.
+A modern, responsive checkout application built with React, Vite, HeadlessUI, and Tailwind CSS.
+
+## ✨ Features
+
+- **Modern React Stack**: Built with React 18, Vite, and TypeScript support
+- **HeadlessUI Components**: Accessible, unstyled UI components
+- **Mobile-First Design**: Fully responsive and mobile-optimized
+- **Form Validation**: Real-time validation with React Hook Form and Zod
+- **Stripe Integration**: Secure payment processing with React Stripe.js
+- **Password Strength**: Interactive password requirements with visual feedback
+- **Error Handling**: Comprehensive error boundaries and user feedback
+- **Accessibility**: WCAG compliant with proper ARIA labels and keyboard navigation
+- **Performance**: Optimized with lazy loading and minimal bundle size
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Node.js 14.0.0 or higher
-- Stripe account with API keys
-- (Optional) Mailgun account for email validation
+
+- Node.js 18+ 
+- npm or yarn
+- Stripe account (for payment processing)
 
 ### Installation
 
-1. Clone the repository:
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd checkout-v4-cc360
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Environment Setup**
+   ```bash
+   cp .env.example .env
+   ```
+   
+   Update `.env` with your Stripe keys:
+   ```
+   VITE_STRIPE_PUBLISHABLE_KEY=pk_test_your_publishable_key
+   STRIPE_SECRET_KEY=sk_test_your_secret_key
+   ```
+
+4. **Start development server**
+   ```bash
+   npm run dev
+   ```
+   
+   Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+## 🏗️ Development
+
+### Available Scripts
+
+- `npm run dev` - Start development server
+- `npm run build` - Build for production  
+- `npm run preview` - Preview production build
+- `npm run server` - Start backend API server
+- `npm run lint` - Run ESLint
+- `npm run test` - Run tests
+
+### Project Structure
+
+```
+├── src/
+│   ├── components/          # React components
+│   │   ├── CheckoutForm.jsx # Main checkout form
+│   │   ├── OrderSummary.jsx # Pricing summary
+│   │   ├── FormField.jsx    # Reusable form field
+│   │   └── ...
+│   ├── utils/               # Utility functions
+│   │   ├── validation.js    # Zod schemas & validation
+│   │   └── cn.js           # Class name utility
+│   ├── hooks/              # Custom React hooks
+│   ├── contexts/           # React contexts
+│   └── types/              # TypeScript types
+├── server/                 # Express API server
+├── legacy-public/          # Original vanilla JS version
+├── legacy-src/            # Original source files
+└── public/                # Static assets
+```
+
+## 🎨 Design System
+
+### Colors
+- **Primary**: Blue scale (600-900) for CTA buttons and accents
+- **Success**: Green for validation success states
+- **Error**: Red for validation errors and alerts
+- **Neutral**: Gray scale for text and backgrounds
+
+### Components
+- Built with HeadlessUI for accessibility
+- Tailwind CSS for consistent styling
+- Custom CSS components for reusable patterns
+- Mobile-first responsive design
+
+## 🔒 Security Features
+
+- **Form Validation**: Client and server-side validation
+- **Stripe Elements**: PCI-compliant payment handling
+- **HTTPS Only**: Secure data transmission
+- **Input Sanitization**: XSS protection
+- **Error Boundaries**: Graceful error handling
+
+## 📱 Mobile Responsiveness
+
+- **Breakpoints**: Mobile (320px+), Tablet (768px+), Desktop (1024px+)
+- **Touch Friendly**: Large tap targets and optimized interactions
+- **Performance**: Optimized images and lazy loading
+- **Progressive Enhancement**: Works without JavaScript
+
+## 🧪 Testing
+
+Run the test suite:
 ```bash
-git clone https://github.com/course-creator-360/checkout-v4-cc360.git
-cd checkout-v4-cc360
+npm run test
 ```
 
-2. Install dependencies:
+For UI testing:
 ```bash
-npm install
+npm run test:ui
 ```
 
-3. Set up environment variables:
+## 🚀 Deployment
+
+### Build for Production
 ```bash
-cp .env.example .env
-# Edit .env with your actual API keys
+npm run build
 ```
 
-4. Start the development server:
-```bash
-npm run dev  # Simple static server on port 8000
-# OR
-npm start    # Full Express server with API endpoints
-```
+The `dist/` folder contains the production build ready for deployment.
 
-## 📁 Project Structure
-
-```
-checkout-v4-cc360-1/
-├── src/                    # Source code
-│   ├── server/            # Server-side code
-│   │   ├── server.js      # Main Express server
-│   │   ├── middleware.js  # Express middleware
-│   │   ├── routes.js      # API routes
-│   │   ├── sanitizer.js   # Input sanitization
-│   │   ├── performance-monitor.js
-│   │   ├── serve.js       # Development static server
-│   │   └── api/           # API endpoints
-│   │       └── validate-email.js
-│   ├── client/            # Client-side JavaScript
-│   │   ├── app.js         # Main application
-│   │   └── email-validator.js
-│   └── shared/            # Shared utilities
-│       ├── config.js      # Universal configuration
-│       └── logger.js      # Universal logger
-├── public/                # Static files
-│   ├── index.html         # Main checkout page
-│   └── styles.css         # Custom styles
-├── docs/                  # Documentation
-│   ├── SECURITY_SUMMARY.md
-│   ├── PRODUCTION_GUIDE.md
-│   └── ...
-├── tests/                 # Test files
-├── package.json
-├── .env.example           # Environment template
-└── README.md              # This file
-```
+### Vercel Deployment
+This project is optimized for Vercel deployment with automatic builds and serverless functions.
 
 ## 🔧 Configuration
 
 ### Environment Variables
 
-Copy `.env.example` to `.env` and configure:
+**Client (Vite)**:
+- `VITE_STRIPE_PUBLISHABLE_KEY` - Stripe publishable key
 
-#### Required Variables
-- `STRIPE_PUBLISHABLE_KEY` - Your Stripe publishable key
-- `STRIPE_SECRET_KEY` - Your Stripe secret key
-- `STRIPE_WEBHOOK_SECRET` - Webhook signing secret
-
-#### Optional Variables
-- `PORT` - Server port (default: 3000)
+**Server**:
+- `STRIPE_SECRET_KEY` - Stripe secret key
+- `PORT` - Server port (default: 3001)
 - `NODE_ENV` - Environment (development/production)
-- `MAILGUN_API_KEY` - For email validation
-- `SESSION_SECRET` - Session encryption key
-- See `.env.example` for complete list
 
-### Unified Configuration System
+### Stripe Configuration
+1. Create a Stripe account
+2. Get your API keys from the Stripe Dashboard
+3. Add your keys to the `.env` file
+4. Configure your pricing in `src/App.jsx`
 
-The project uses a unified configuration system (`src/shared/config.js`) that:
-- Works in both Node.js and browser environments
-- Automatically loads environment variables on the server
-- Injects configuration into the client safely
-- Validates required environment variables on startup
+## 📖 API Endpoints
 
-### Universal Logger
-
-The universal logger (`src/shared/logger.js`) provides:
-- Consistent logging across server and client
-- Environment-aware log levels
-- Structured JSON logging in production
-- Client error reporting to server
-- Automatic error tracking
-
-## 🏗️ Architecture
-
-### Server-Side
-- Express.js server with security middleware
-- Stripe integration for payment processing
-- Environment-based configuration injection
-- Rate limiting and security headers
-- Comprehensive error handling
-
-### Client-Side
-- Vanilla JavaScript for maximum compatibility
-- Real-time form validation
-- Stripe Elements integration
-- Progressive enhancement
-- Automatic error reporting
-
-### Security Features
-- No hardcoded API keys or secrets
-- Environment variable validation
-- Input sanitization on all endpoints
-- CSRF protection
-- Rate limiting
-- Security headers (HSTS, CSP, etc.)
-
-## 📝 Available Scripts
-
-- `npm start` - Start production server
-- `npm run dev` - Start development server
-- `npm test` - Run tests
-- `npm run test:watch` - Run tests in watch mode
-
-## 🚀 Deployment
-
-### Vercel
-The project is configured for Vercel deployment:
-1. Connect your GitHub repository to Vercel
-2. Set environment variables in Vercel dashboard
-3. Deploy
-
-### Other Platforms
-1. Set all required environment variables
-2. Run `npm install`
-3. Run `npm start`
-4. Configure reverse proxy if needed
-
-## 🔒 Security
-
-- All sensitive configuration is stored in environment variables
-- Client-side code never contains secret keys
-- Server injects only public configuration into HTML
-- Comprehensive input validation and sanitization
-- See `docs/SECURITY_SUMMARY.md` for details
-
-## 🧪 Testing
-
-Run tests with:
-```bash
-npm test
-```
-
-Tests cover:
-- Payment flow integration
-- Input validation
-- Security measures
-- Error handling
-
-## 📚 Documentation
-
-- [Security Summary](docs/SECURITY_SUMMARY.md) - Security measures and best practices
-- [Production Guide](docs/PRODUCTION_GUIDE.md) - Production deployment guide
-- [Email Validation](docs/EMAIL_VALIDATION_README.md) - Email validation setup
+- `POST /api/create-subscription` - Create Stripe customer and subscription
+- `POST /api/create-payment-intent` - Create payment intent for processing
 
 ## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Ensure tests pass
-5. Submit a pull request
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
 ## 📄 License
 
-Private and confidential - Course Creator 360
+This project is licensed under the UNLICENSED license - see the LICENSE file for details.
+
+## 🆘 Support
+
+For questions or support, please contact the Course Creator 360 team or open an issue on GitHub.
 
 ---
 
-For support or questions, contact the Course Creator 360 development team. 
+## Migration from Legacy Version
+
+The original vanilla JavaScript version has been moved to `legacy-public/` and `legacy-src/` directories. The new React version provides:
+
+- ✅ Better maintainability and developer experience
+- ✅ Improved accessibility and mobile responsiveness
+- ✅ Modern development workflow with hot reload
+- ✅ Type safety with TypeScript support
+- ✅ Better error handling and user feedback
+- ✅ Enhanced security with proper validation 

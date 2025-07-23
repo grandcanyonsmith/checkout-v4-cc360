@@ -118,15 +118,17 @@ app.post('/api/create-payment-intent', async (req, res) => {
 // Handle subscription creation
 app.post('/api/create-subscription', async (req, res) => {
   try {
-    const { email, name, subscriptionType, priceId } = req.body;
+    const { email, name, phone, subscriptionType, priceId } = req.body;
 
     // Create customer
     const customer = await stripe.customers.create({
       email,
       name,
+      phone: phone,
       metadata: {
         source: 'checkout_page',
-        subscription_type: subscriptionType
+        subscription_type: subscriptionType,
+        phone: phone
       }
     });
 
@@ -319,6 +321,35 @@ app.post('/api/validate-email', async (req, res) => {
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Authenticate endpoint (for browser extensions/third-party compatibility)
+app.all('/authenticate', (req, res) => {
+  res.status(200).json({ 
+    authenticated: false, 
+    message: 'No authentication required for this checkout' 
+  });
+});
+
+// Client error logging endpoint
+app.post('/api/client-error', (req, res) => {
+  try {
+    const { error, context, timestamp, url } = req.body;
+    
+    serverLogger.warn('Client error reported', {
+      error: error || 'Unknown error',
+      context: context || 'Unknown context',
+      timestamp: timestamp || new Date().toISOString(),
+      url: url || req.headers.referer,
+      userAgent: req.headers['user-agent'],
+      ip: req.ip
+    });
+    
+    res.json({ success: true, logged: true });
+  } catch (error) {
+    serverLogger.error('Failed to log client error', error);
+    res.status(500).json({ success: false, error: 'Failed to log error' });
+  }
 });
 
 // Legacy static file routes removed - now handled by express.static middleware

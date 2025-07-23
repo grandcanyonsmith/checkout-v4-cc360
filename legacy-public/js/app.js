@@ -87,7 +87,7 @@ class CheckoutApp {
   async setupDOM() {
     const elementIds = [
       'loading-overlay', 'payment-form', 'submit', 'spinner', 'button-text',
-      'firstName', 'lastName', 'email', 'password', 'togglePassword',
+      'firstName', 'lastName', 'email', 'phone', 'password', 'togglePassword',
       'eye', 'eyeOff', 'pw-req', 'payment-element', 'terms',
       'error-modal', 'error-message', 'close-error',
       'success-notification', 'success-message',
@@ -204,18 +204,36 @@ class CheckoutApp {
     }
 
     // Real-time validation
-    const fields = ['firstName', 'lastName', 'email', 'password'];
+    const fields = ['firstName', 'lastName', 'email', 'phone', 'password'];
     fields.forEach(field => {
       const element = this.elements[field];
       if (element) {
-        element.addEventListener('blur', () => this.validateField(field));
-        element.addEventListener('input', () => this.clearFieldError(field));
+        element.addEventListener('blur', async () => {
+          await this.validateField(field);
+          this.checkFormReady();
+        });
+        element.addEventListener('input', () => {
+          this.clearFieldError(field);
+          this.checkFormReady();
+        });
       }
     });
 
+    // Phone number formatting
+    if (this.elements['phone']) {
+      this.elements['phone'].addEventListener('input', (e) => {
+        this.formatPhoneNumber(e);
+        this.clearFieldError('phone');
+        this.checkFormReady();
+      });
+    }
+
     // Password strength validation
     if (this.elements['password']) {
-      this.elements['password'].addEventListener('input', () => this.validatePassword());
+      this.elements['password'].addEventListener('input', () => {
+        this.validatePassword();
+        this.checkFormReady();
+      });
     }
 
     // Terms checkbox
@@ -245,16 +263,51 @@ class CheckoutApp {
 
       this.stripe = window.Stripe(this.config.stripe.publishableKey);
       
-      // Create payment intent
-      const clientSecret = await this.createPaymentIntent();
-      
-      // Create payment element
-      await this.createPaymentElement(clientSecret);
+      // Create payment element immediately for better UX
+      await this.createPaymentElementForDisplay();
       
       this.logger.info('Stripe initialized successfully');
     } catch (error) {
       this.logger.error('Stripe initialization failed', error);
-      throw error;
+      this.showError('Payment system is temporarily unavailable. Please try again later.');
+    }
+  }
+
+  /**
+   * Create payment element for display (before form submission)
+   */
+  async createPaymentElementForDisplay() {
+    const paymentElementDiv = document.getElementById('payment-element');
+    if (!paymentElementDiv) {
+      return;
+    }
+
+    try {
+      // Create Stripe elements instance for display
+      this.stripeElements = this.stripe.elements({
+        mode: 'setup',
+        currency: 'usd',
+        appearance: { 
+          theme: 'stripe',
+          variables: {
+            colorPrimary: '#1e40af',
+          }
+        }
+      });
+
+      // Create and mount the payment element
+      this.paymentElement = this.stripeElements.create('payment', {
+        fields: {
+          billingDetails: {
+            address: 'never', // We collect address separately
+          }
+        }
+      });
+
+      this.paymentElement.mount('#payment-element');
+    } catch (error) {
+      console.error('Failed to create payment element for display:', error);
+      paymentElementDiv.innerHTML = '<div class="text-sm text-gray-500">Payment form will load after entering your information</div>';
     }
   }
 
@@ -280,22 +333,63 @@ class CheckoutApp {
    * Create payment intent
    */
   async createPaymentIntent() {
+    // Ensure we have a valid subscription type
+    if (!this.state.subscriptionType) {
+      throw new Error('Subscription type not determined');
+    }
+    
+    // Ensure we have pricing configuration
+    if (!this.config.pricing || !this.config.pricing[this.state.subscriptionType]) {
+      throw new Error(`Pricing configuration not found for subscription type: ${this.state.subscriptionType}`);
+    }
+    
+    const pricing = this.config.pricing[this.state.subscriptionType];
+    
+    // For monthly with trial, we don't charge anything initially
+    // For annual, we charge the full amount
+    const amount = pricing.hasTrial ? 0 : (pricing.amount || 0);
+    
+    // Ensure amount is a valid number
+    const finalAmount = typeof amount === 'number' && !isNaN(amount) ? amount : 0;
+    
+    const requestBody = {
+      amount: finalAmount,
+      currency: pricing.currency || 'usd',
+      subscription_type: this.state.subscriptionType,
+      price_id: pricing.priceId || '',
+      customer_id: this.state.customerId,
+      subscription_id: this.state.sessionId
+    };
+    
+    // Validate that all required fields are present
+    if (typeof requestBody.amount !== 'number' || isNaN(requestBody.amount)) {
+      throw new Error(`Invalid amount: ${requestBody.amount}`);
+    }
+    
+    if (!requestBody.customer_id) {
+      throw new Error('Customer ID is required');
+    }
+    
+    if (!requestBody.subscription_id) {
+      throw new Error('Subscription ID is required');
+    }
+
     const response = await fetch(this.config.api.createPaymentIntent, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        subscriptionType: this.state.subscriptionType
-      })
+      body: JSON.stringify(requestBody)
     });
 
     if (!response.ok) {
-      throw new Error('Failed to create payment intent');
+      const errorText = await response.text();
+      console.error('Payment intent creation failed:', errorText);
+      throw new Error(`Failed to create payment intent: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
-    return data.clientSecret;
+    return data.client_secret;
   }
 
   /**
@@ -329,6 +423,14 @@ class CheckoutApp {
         }
       });
     }
+    
+    // Validate password if it has a value
+    if (this.elements['password'] && this.elements['password'].value) {
+      this.validatePassword();
+    }
+    
+    // Check form readiness after prefilling
+    this.checkFormReady();
   }
 
   /**
@@ -354,14 +456,26 @@ class CheckoutApp {
         this.analytics.trackFormEvent('submit_start', this.state.formData);
       }
 
+      // Create customer and subscription first
+      await this.createCustomerAndSubscription();
+
+      // Create payment intent and get client secret
+      const clientSecret = await this.createPaymentIntent();
+      
+      // Update the existing payment element with the client secret
+      await this.updatePaymentElementWithSecret(clientSecret);
+
       // Confirm payment
-      const result = await this.confirmPayment();
+      const result = await this.confirmPayment(clientSecret);
       
       if (result.error) {
-        this.showFieldError('payment', result.error.message);
+        // Payment failed - error already handled in confirmPayment method
+        // Don't redirect, let user try again
+        this.setSubmitting(false);
+        return;
       } else {
         // Success - redirect to success page
-        window.location.href = this.config.urls.successRedirect;
+        window.location.href = this.buildReturnUrl();
       }
     } catch (error) {
       this.logger.error('Form submission error', error);
@@ -376,10 +490,56 @@ class CheckoutApp {
   }
 
   /**
+   * Create customer and subscription
+   */
+  async createCustomerAndSubscription() {
+    const pricing = this.config.pricing[this.state.subscriptionType];
+    
+    const response = await fetch('/api/create-subscription', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email: this.elements['email'].value.trim(),
+        name: `${this.elements['firstName'].value.trim()} ${this.elements['lastName'].value.trim()}`,
+        phone: this.state.formData['phone'] || this.elements['phone'].value.replace(/\D/g, ''),
+        subscriptionType: this.state.subscriptionType,
+        priceId: pricing.priceId
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to create subscription');
+    }
+
+    const data = await response.json();
+    this.state.customerId = data.customerId;
+    this.state.sessionId = data.subscriptionId;
+  }
+
+  /**
+   * Build return URL with parameters
+   */
+  buildReturnUrl() {
+    const params = new URLSearchParams({
+      session_id: this.state.sessionId,
+      customer_id: this.state.customerId,
+      subscription_type: this.state.subscriptionType,
+      email: this.elements['email'].value,
+      firstName: this.elements['firstName'].value,
+      lastName: this.elements['lastName'].value,
+      phone: this.state.formData['phone'] || this.elements['phone'].value.replace(/\D/g, '')
+    });
+
+    return `${this.config.urls.successRedirect}?${params.toString()}`;
+  }
+
+  /**
    * Validate all form fields
    */
   async validateAllFields() {
-    const fields = ['firstName', 'lastName', 'email', 'password'];
+    const fields = ['firstName', 'lastName', 'email', 'phone', 'password'];
     const results = await Promise.all(
       fields.map(field => this.validateField(field))
     );
@@ -424,7 +584,14 @@ class CheckoutApp {
         }
         break;
 
-
+      case 'phone':
+        const phoneValidation = this.validatePhoneNumber(value);
+        if (!phoneValidation.isValid) {
+          this.showFieldError(fieldName, phoneValidation.message);
+          return false;
+        }
+        this.state.formData[fieldName] = phoneValidation.cleanPhone;
+        break;
 
       case 'password':
         if (!this.isValidPassword()) {
@@ -436,6 +603,20 @@ class CheckoutApp {
 
     this.markFieldSuccess(fieldName);
     return true;
+  }
+
+  /**
+   * Get field label for error messages
+   */
+  getFieldLabel(fieldName) {
+    const labels = {
+      firstName: 'First name',
+      lastName: 'Last name',
+      email: 'Email address',
+      phone: 'Phone number',
+      password: 'Password'
+    };
+    return labels[fieldName] || fieldName;
   }
 
   /**
@@ -469,6 +650,18 @@ class CheckoutApp {
     const validCount = Object.values(checks).filter(Boolean).length;
     this.state.passwordStrength = validCount;
     
+    // Clear/show password error based on validation
+    if (password.length > 0) {
+      if (validCount >= 3) {
+        this.clearFieldError('password');
+        this.markFieldSuccess('password');
+      } else {
+        this.showFieldError('password', 'Password must meet at least 3 of the 4 requirements');
+      }
+    } else {
+      this.clearFieldError('password');
+    }
+    
     return validCount >= 3;
   }
 
@@ -495,17 +688,193 @@ class CheckoutApp {
   }
 
   /**
+   * Update payment element with client secret for processing
+   */
+  async updatePaymentElementWithSecret(clientSecret) {
+    const paymentElementDiv = document.getElementById('payment-element');
+    if (!paymentElementDiv) {
+      throw new Error('Payment element container not found');
+    }
+
+    try {
+      // Unmount existing payment element
+      if (this.paymentElement) {
+        this.paymentElement.unmount();
+      }
+
+      // Create new Stripe elements instance with the client secret
+      this.stripeElements = this.stripe.elements({
+        clientSecret: clientSecret,
+        appearance: { 
+          theme: 'stripe',
+          variables: {
+            colorPrimary: '#1e40af',
+          }
+        }
+      });
+
+      // Create and mount the payment element with client secret
+      this.paymentElement = this.stripeElements.create('payment', {
+        fields: {
+          billingDetails: {
+            address: 'never', // We collect address separately
+          }
+        }
+      });
+
+      this.paymentElement.mount('#payment-element');
+    } catch (error) {
+      console.error('Failed to update payment element with secret:', error);
+      throw new Error('Failed to prepare payment form');
+    }
+  }
+
+  /**
    * Confirm payment with Stripe
    */
-  async confirmPayment() {
-    const { error } = await this.stripe.confirmPayment({
-      elements: this.elements.paymentElement,
-      confirmParams: {
-        return_url: this.config.urls.successRedirect,
-      },
-    });
+  async confirmPayment(clientSecret) {
+    // Determine if this is a SetupIntent or PaymentIntent based on the prefix
+    const isSetupIntent = clientSecret.startsWith('seti_');
+    
+    // Prepare billing details
+    const billingDetails = {
+      name: `${this.elements['firstName'].value.trim()} ${this.elements['lastName'].value.trim()}`,
+      email: this.elements['email'].value.trim(),
+      phone: this.state.formData['phone'] || this.elements['phone'].value.replace(/\D/g, '')
+    };
 
-    return { error };
+    let result;
+    
+    try {
+      if (isSetupIntent) {
+        // For trial subscriptions (SetupIntent)
+        result = await this.stripe.confirmSetup({
+          elements: this.stripeElements,
+          confirmParams: {
+            return_url: this.buildReturnUrl(),
+            payment_method_data: {
+              billing_details: billingDetails
+            }
+          },
+          redirect: 'if_required'
+        });
+      } else {
+        // For paid subscriptions (PaymentIntent)
+        result = await this.stripe.confirmPayment({
+          elements: this.stripeElements,
+          confirmParams: {
+            return_url: this.buildReturnUrl(),
+            payment_method_data: {
+              billing_details: billingDetails
+            }
+          },
+          redirect: 'if_required'
+        });
+      }
+
+      // Handle payment errors with specific messages
+      if (result.error) {
+        this.handlePaymentError(result.error);
+        return { error: result.error };
+      }
+
+      // Success - redirect if not already redirecting
+      if (!result.error && result.setupIntent?.status === 'succeeded' || result.paymentIntent?.status === 'succeeded') {
+        window.location.href = this.buildReturnUrl();
+      }
+
+      return result;
+    } catch (error) {
+      console.error('Payment confirmation error:', error);
+      this.showError('An unexpected error occurred during payment processing. Please try again.');
+      return { error: { message: error.message } };
+    }
+  }
+
+  /**
+   * Handle specific payment errors with user-friendly messages
+   */
+  handlePaymentError(error) {
+    let userMessage = '';
+    
+    switch (error.code) {
+      case 'card_declined':
+        if (error.decline_code === 'insufficient_funds') {
+          userMessage = 'Your card was declined due to insufficient funds. Please try a different payment method.';
+        } else if (error.decline_code === 'lost_card' || error.decline_code === 'stolen_card') {
+          userMessage = 'Your card was declined. Please contact your bank or try a different payment method.';
+        } else if (error.decline_code === 'expired_card') {
+          userMessage = 'Your card has expired. Please use a different payment method.';
+        } else if (error.decline_code === 'incorrect_cvc') {
+          userMessage = 'The security code (CVC) you entered is incorrect. Please check and try again.';
+        } else if (error.decline_code === 'incorrect_number') {
+          userMessage = 'The card number you entered is incorrect. Please check and try again.';
+        } else {
+          userMessage = 'Your card was declined. Please try a different payment method or contact your bank.';
+        }
+        break;
+        
+      case 'incorrect_number':
+        userMessage = 'The card number you entered is incorrect. Please check the number and try again.';
+        break;
+        
+      case 'invalid_number':
+        userMessage = 'The card number you entered is not valid. Please check the number and try again.';
+        break;
+        
+      case 'invalid_expiry_month':
+      case 'invalid_expiry_year':
+        userMessage = 'The expiration date you entered is invalid. Please check and try again.';
+        break;
+        
+      case 'invalid_cvc':
+        userMessage = 'The security code (CVC) you entered is invalid. Please check and try again.';
+        break;
+        
+      case 'expired_card':
+        userMessage = 'Your card has expired. Please use a different payment method.';
+        break;
+        
+      case 'incorrect_cvc':
+        userMessage = 'The security code (CVC) you entered is incorrect. Please check and try again.';
+        break;
+        
+      case 'processing_error':
+        userMessage = 'An error occurred while processing your payment. Please try again.';
+        break;
+        
+      case 'rate_limit':
+        userMessage = 'Too many payment attempts. Please wait a moment and try again.';
+        break;
+        
+      case 'authentication_required':
+        userMessage = 'Your bank requires additional authentication. Please complete the verification and try again.';
+        break;
+        
+      case 'payment_intent_authentication_failure':
+        userMessage = 'Payment authentication failed. Please try again or use a different payment method.';
+        break;
+        
+      default:
+        // Use the original error message from Stripe as fallback
+        userMessage = error.message || 'An error occurred while processing your payment. Please try again.';
+        break;
+    }
+    
+    // Show the error to the user in the payment area
+    this.showFieldError('payment', userMessage);
+    
+    // Also show a general error message for visibility
+    this.showError(userMessage);
+    
+    // Track the specific error for analytics
+    if (this.analytics) {
+      this.analytics.trackError(error, { 
+        context: 'payment_confirmation',
+        error_code: error.code,
+        decline_code: error.decline_code 
+      });
+    }
   }
 
   /**
@@ -528,17 +897,104 @@ class CheckoutApp {
   }
 
   /**
+   * Format phone number as user types
+   */
+  formatPhoneNumber(event) {
+    const input = event.target;
+    const value = input.value.replace(/\D/g, ''); // Remove all non-digits
+    
+    let formattedValue = '';
+    
+    if (value.length >= 6) {
+      formattedValue = `(${value.slice(0, 3)}) ${value.slice(3, 6)}-${value.slice(6, 10)}`;
+    } else if (value.length >= 3) {
+      formattedValue = `(${value.slice(0, 3)}) ${value.slice(3)}`;
+    } else if (value.length > 0) {
+      formattedValue = `(${value}`;
+    }
+    
+    input.value = formattedValue;
+  }
+
+  /**
+   * Validate phone number
+   */
+  validatePhoneNumber(phone) {
+    // Remove all non-digits
+    const cleanPhone = phone.replace(/\D/g, '');
+    
+    // US phone number should be exactly 10 digits
+    if (cleanPhone.length !== 10) {
+      return {
+        isValid: false,
+        message: 'Please enter a valid 10-digit US phone number'
+      };
+    }
+    
+    // Check if it starts with 1 (country code) and remove it
+    const phoneToValidate = cleanPhone.startsWith('1') && cleanPhone.length === 11 
+      ? cleanPhone.slice(1) 
+      : cleanPhone;
+    
+    if (phoneToValidate.length !== 10) {
+      return {
+        isValid: false,
+        message: 'Please enter a valid 10-digit US phone number'
+      };
+    }
+    
+    // Check for invalid patterns
+    const areaCode = phoneToValidate.slice(0, 3);
+    const exchange = phoneToValidate.slice(3, 6);
+    
+    // Area code cannot start with 0 or 1
+    if (areaCode.startsWith('0') || areaCode.startsWith('1')) {
+      return {
+        isValid: false,
+        message: 'Please enter a valid US phone number'
+      };
+    }
+    
+    // Exchange cannot start with 0 or 1
+    if (exchange.startsWith('0') || exchange.startsWith('1')) {
+      return {
+        isValid: false,
+        message: 'Please enter a valid US phone number'
+      };
+    }
+    
+    return {
+      isValid: true,
+      cleanPhone: phoneToValidate
+    };
+  }
+
+  /**
    * Check if form is ready for submission
    */
   checkFormReady() {
-    const requiredFields = ['firstName', 'lastName', 'email', 'password'];
-    const hasAllFields = requiredFields.every(field => 
-      this.elements[field] && this.elements[field].value.trim()
-    );
+    const requiredFields = ['firstName', 'lastName', 'email', 'phone', 'password'];
+    const fieldValues = {};
+    const hasAllFields = requiredFields.every(field => {
+      const hasValue = this.elements[field] && this.elements[field].value.trim();
+      fieldValues[field] = hasValue ? this.elements[field].value.trim() : 'MISSING';
+      return hasValue;
+    });
     const hasValidPassword = this.isValidPassword();
     const hasAcceptedTerms = this.elements['terms'] && this.elements['terms'].checked;
 
     const isReady = hasAllFields && hasValidPassword && hasAcceptedTerms;
+    
+    // Debug logging
+    console.log('CheckFormReady Debug:', {
+      hasAllFields,
+      fieldValues,
+      hasValidPassword,
+      passwordStrength: this.state.passwordStrength,
+      hasAcceptedTerms,
+      isReady,
+      submitButton: this.elements['submit'] ? 'exists' : 'missing'
+    });
     
     if (this.elements['submit']) {
       this.elements['submit'].disabled = !isReady;
