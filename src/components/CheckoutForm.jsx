@@ -17,6 +17,7 @@ import { cn } from '../utils/cn'
 import { validatePasswordStrength } from '../utils/validation'
 import { validatePhoneNumber, countries } from '../utils/countries'
 import emailValidator from '../utils/emailValidation'
+import phoneValidator from '../utils/phoneValidation'
 import FormField from './FormField'
 import PasswordStrength from './PasswordStrength'
 import PhoneInput from './PhoneInput'
@@ -72,6 +73,8 @@ export default function CheckoutForm({ pricing, subscriptionType, isSubmitting, 
   const [passwordStrength, setPasswordStrength] = useState({ checks: [], passedCount: 0, isValid: false })
   const [emailValidation, setEmailValidation] = useState({ status: 'idle', result: null, message: '' })
   const [isValidatingEmail, setIsValidatingEmail] = useState(false)
+  const [phoneValidation, setPhoneValidation] = useState({ status: 'idle', result: null, message: '' })
+  const [isValidatingPhone, setIsValidatingPhone] = useState(false)
   
   const stripe = useStripe()
   const elements = useElements()
@@ -155,6 +158,40 @@ export default function CheckoutForm({ pricing, subscriptionType, isSubmitting, 
     }
   }
 
+  // Validate phone with Twilio API
+  const validatePhone = async (phone) => {
+    if (!phone) {
+      setPhoneValidation({ status: 'idle', result: null, message: '' })
+      return false
+    }
+
+    setIsValidatingPhone(true)
+    setPhoneValidation({ status: 'validating', result: null, message: 'Validating phone number...' })
+
+    try {
+      const result = await phoneValidator.validateWithAPI(phone, { immediate: true })
+      const formatted = phoneValidator.formatResult(result)
+      
+      setPhoneValidation({
+        status: result.isValid ? (result.isMobile !== false ? 'valid' : 'invalid') : 'invalid',
+        result,
+        message: formatted.message
+      })
+      
+      setIsValidatingPhone(false)
+      return result.isValid && result.isMobile !== false
+    } catch (error) {
+      console.error('Phone validation error:', error)
+      setPhoneValidation({
+        status: 'error',
+        result: null,
+        message: 'Unable to validate phone number. Please try again.'
+      })
+      setIsValidatingPhone(false)
+      return false
+    }
+  }
+
   // Handle step 1 submission (Next button)
   const handleStep1Submit = async (data) => {
     clearError()
@@ -164,6 +201,14 @@ export default function CheckoutForm({ pricing, subscriptionType, isSubmitting, 
     
     if (!isEmailValid) {
       showError('Please enter a valid email address to continue')
+      return
+    }
+
+    // Validate phone before proceeding
+    const isPhoneValid = await validatePhone(data.phone)
+    
+    if (!isPhoneValid) {
+      showError('Please enter a valid mobile phone number to continue')
       return
     }
     
@@ -606,21 +651,56 @@ export default function CheckoutForm({ pricing, subscriptionType, isSubmitting, 
               required
               error={step1Form.formState.errors.phone?.message}
             >
-              <Controller
-                name="phone"
-                control={step1Form.control}
-                render={({ field }) => (
-                  <PhoneInput
-                    value={field.value}
-                    onChange={field.onChange}
-                    error={step1Form.formState.errors.phone}
-                    className={cn(
-                      step1Form.formState.errors.phone && 'error',
-                      !step1Form.formState.errors.phone && field.value && 'success'
-                    )}
-                  />
-                )}
-              />
+              <div className="relative">
+                <Controller
+                  name="phone"
+                  control={step1Form.control}
+                  render={({ field }) => (
+                    <PhoneInput
+                      value={field.value}
+                      onChange={(value) => {
+                        field.onChange(value)
+                        // Trigger validation after user stops typing
+                        if (value && value.length > 8) {
+                          setTimeout(() => validatePhone(value), 500)
+                        }
+                      }}
+                      error={step1Form.formState.errors.phone}
+                      className={cn(
+                        'pr-10',
+                        step1Form.formState.errors.phone && 'error',
+                        phoneValidation.status === 'invalid' && 'error',
+                        phoneValidation.status === 'valid' && 'success',
+                        !step1Form.formState.errors.phone && field.value && phoneValidation.status === 'idle' && 'neutral'
+                      )}
+                    />
+                  )}
+                />
+                
+                {/* Phone validation status icon */}
+                <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                  {isValidatingPhone ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                  ) : phoneValidation.status === 'valid' ? (
+                    <CheckCircleIcon className="h-4 w-4 text-green-500" />
+                  ) : phoneValidation.status === 'invalid' ? (
+                    <ExclamationCircleIcon className="h-4 w-4 text-red-500" />
+                  ) : null}
+                </div>
+              </div>
+              
+              {/* Phone validation message */}
+              {phoneValidation.message && (
+                <p className={cn(
+                  'text-sm mt-1',
+                  phoneValidation.status === 'valid' && 'text-green-600',
+                  phoneValidation.status === 'invalid' && 'text-red-600',
+                  phoneValidation.status === 'validating' && 'text-blue-600',
+                  phoneValidation.status === 'error' && 'text-red-600'
+                )}>
+                  {phoneValidation.message}
+                </p>
+              )}
             </FormField>
 
             {/* Password */}
@@ -675,18 +755,21 @@ export default function CheckoutForm({ pricing, subscriptionType, isSubmitting, 
                 !step1Form.formState.isValid || 
                 !passwordStrength.isValid || 
                 isValidatingEmail ||
+                isValidatingPhone ||
                 (emailValidation.status === 'invalid') ||
-                (emailValidation.status === 'error')
+                (emailValidation.status === 'error') ||
+                (phoneValidation.status === 'invalid') ||
+                (phoneValidation.status === 'error')
               }
               className={cn(
                 'w-full flex items-center justify-center rounded-lg px-4 py-4 text-base font-semibold shadow-sm transition-all duration-200',
                 'focus:ring-2 focus:ring-offset-2',
-                (step1Form.formState.isValid && passwordStrength.isValid && !isValidatingEmail && emailValidation.status !== 'invalid' && emailValidation.status !== 'error')
+                (step1Form.formState.isValid && passwordStrength.isValid && !isValidatingEmail && !isValidatingPhone && emailValidation.status !== 'invalid' && emailValidation.status !== 'error' && phoneValidation.status !== 'invalid' && phoneValidation.status !== 'error')
                   ? 'text-white hover:transform hover:scale-[1.02] active:scale-[0.98]'
                   : 'bg-gray-300 text-gray-500 cursor-not-allowed'
               )}
               style={{
-                backgroundColor: (step1Form.formState.isValid && passwordStrength.isValid && !isValidatingEmail && emailValidation.status !== 'invalid' && emailValidation.status !== 'error') ? '#0475FF' : undefined,
+                backgroundColor: (step1Form.formState.isValid && passwordStrength.isValid && !isValidatingEmail && !isValidatingPhone && emailValidation.status !== 'invalid' && emailValidation.status !== 'error' && phoneValidation.status !== 'invalid' && phoneValidation.status !== 'error') ? '#0475FF' : undefined,
                 focusRingColor: '#0475FF'
               }}
             >
@@ -694,6 +777,11 @@ export default function CheckoutForm({ pricing, subscriptionType, isSubmitting, 
                 <>
                   <div className="w-4 h-4 border-2 border-gray-300 border-t-white rounded-full animate-spin mr-2"></div>
                   Validating Email...
+                </>
+              ) : isValidatingPhone ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-gray-300 border-t-white rounded-full animate-spin mr-2"></div>
+                  Validating Phone...
                 </>
               ) : (
                 'Next'

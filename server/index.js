@@ -153,6 +153,117 @@ app.post('/api/validate-email', async (req, res) => {
   }
 })
 
+// Phone validation endpoint using Twilio Lookup API
+app.post('/api/validate-phone', async (req, res) => {
+  try {
+    const { phoneNumber } = req.body
+
+    if (!phoneNumber) {
+      return res.status(400).json({
+        success: false,
+        error: 'Phone number is required'
+      })
+    }
+
+    // Basic phone validation
+    const cleanedNumber = phoneNumber.replace(/[^\d+]/g, '')
+    const internationalRegex = /^\+[1-9]\d{1,14}$/
+
+    if (!internationalRegex.test(cleanedNumber)) {
+      return res.json({
+        success: false,
+        isValid: false,
+        reason: 'Invalid phone number format'
+      })
+    }
+
+    // Twilio configuration
+    const TWILIO_ACCOUNT_SID = process.env.TWILIO_ACCOUNT_SID
+    const TWILIO_AUTH_TOKEN = process.env.TWILIO_AUTH_TOKEN
+
+    if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN) {
+      console.warn('Twilio credentials not configured, using basic validation')
+      return res.status(200).json({
+        success: true,
+        isValid: true,
+        isMobile: null,
+        validationMethod: 'basic_fallback',
+        warning: 'Could not verify if this is a mobile number'
+      })
+    }
+
+    try {
+      // Make request to Twilio Lookup API
+      const twilioUrl = `https://lookups.twilio.com/v2/PhoneNumbers/${encodeURIComponent(cleanedNumber)}?Fields=line_type_intelligence`
+      
+      const response = await fetch(twilioUrl, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Basic ${Buffer.from(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`).toString('base64')}`
+        }
+      })
+
+      if (!response.ok) {
+        console.warn('Twilio API error:', response.status)
+        return res.status(200).json({
+          success: true,
+          isValid: true,
+          isMobile: null,
+          validationMethod: 'basic_fallback',
+          warning: 'Could not verify if this is a mobile number',
+          apiError: `Twilio API returned ${response.status}`
+        })
+      }
+
+      const data = await response.json()
+      
+      // Extract line type information
+      const lineTypeIntelligence = data.line_type_intelligence || {}
+      const lineType = lineTypeIntelligence.type
+      const carrierName = lineTypeIntelligence.carrier_name
+      
+      // Determine if it's mobile
+      const isMobile = lineType === 'mobile'
+      
+      // Check for spam risk (basic heuristics since Twilio doesn't provide this in basic lookup)
+      let spamRisk = 'low' // Default assumption
+      
+      // Transform Twilio response to our format
+      const result = {
+        success: true,
+        isValid: data.valid || false,
+        isMobile: isMobile,
+        lineType: lineType,
+        carrier: carrierName,
+        spamRisk: spamRisk,
+        nationalFormat: data.national_format,
+        countryCode: data.country_code,
+        validationMethod: 'twilio_api'
+      }
+
+      res.status(200).json(result)
+
+    } catch (twilioError) {
+      console.error('Twilio request error:', twilioError)
+      return res.status(200).json({
+        success: true,
+        isValid: true,
+        isMobile: null,
+        validationMethod: 'basic_fallback',
+        warning: 'Could not verify if this is a mobile number',
+        apiError: twilioError.message
+      })
+    }
+
+  } catch (error) {
+    console.error('Phone validation error:', error)
+    res.status(500).json({
+      success: false,
+      error: error.message
+    })
+  }
+})
+
 // Course Creator 360 Billing Endpoints
 
 // Create customer for trial signup
@@ -385,6 +496,7 @@ app.get('/', (req, res) => {
     endpoints: [
       '/api/health',
       '/api/validate-email',
+      '/api/validate-phone',
       '/api/billing/create-customer',
       '/api/billing/create-setup-intent',
       '/api/billing/start-trial'
@@ -406,8 +518,10 @@ app.listen(PORT, () => {
   console.log(`📋 Health check: http://localhost:${PORT}/api/health`)
   console.log(`💳 Billing API: http://localhost:${PORT}/api/billing/*`)
   console.log(`📧 Email validation: http://localhost:${PORT}/api/validate-email`)
+  console.log(`📱 Phone validation: http://localhost:${PORT}/api/validate-phone`)
   console.log(`🔐 Stripe connected: ${!!process.env.STRIPE_SECRET_KEY}`)
   console.log(`🔐 Mailgun connected: ${!!process.env.MAILGUN_API_KEY}`)
+  console.log(`📞 Twilio connected: ${!!(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN)}`)
   console.log(`🌐 CORS enabled for signup.coursecreator360.com`)
 })
 
