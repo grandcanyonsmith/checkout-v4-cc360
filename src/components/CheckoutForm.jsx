@@ -283,7 +283,7 @@ export default function CheckoutForm({ pricing, subscriptionType, isSubmitting, 
       
       // Step 1: Create customer first
       const API_BASE_URL = process.env.NODE_ENV === 'production' 
-        ? 'https://cc360-checkout-production.up.railway.app'
+        ? 'https://cc360-checkout-v2-production.up.railway.app'
         : 'http://localhost:3001';
       
       const customerResponse = await fetch(`${API_BASE_URL}/api/billing/create-customer`, {

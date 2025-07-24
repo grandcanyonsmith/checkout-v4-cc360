@@ -114,7 +114,7 @@ class EmailValidator {
 
           // Make API request
           const API_BASE_URL = process.env.NODE_ENV === 'production' 
-            ? 'https://cc360-checkout-production.up.railway.app'
+            ? 'https://cc360-checkout-v2-production.up.railway.app'
             : 'http://localhost:3001'
 
           const response = await fetch(`${API_BASE_URL}/api/validate-email`, {
