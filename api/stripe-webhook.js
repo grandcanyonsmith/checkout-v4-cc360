@@ -1,4 +1,5 @@
 import Stripe from "stripe";
+import { buffer } from "micro";
 import fetch from "node-fetch";
 
 // Initialize Stripe client
@@ -6,7 +7,7 @@ const stripe = new Stripe(process.env.JI_UPWORK_STRIPE_API);
 
 export const config = {
   api: {
-    bodyParser: false, // Stripe requires raw body for signature verification
+    bodyParser: false, // Stripe requires the raw body for signature verification
   },
 };
 
@@ -15,23 +16,23 @@ export default async function handler(req, res) {
     return res.status(405).send("Method not allowed");
   }
 
-  // Read signature and webhook secret
+  // Read Stripe signature and webhook secret
   const sig = req.headers["stripe-signature"];
   const endpointSecret = process.env.JI_UPWORK_STRIPE_WEBHOOK;
 
   console.log("Stripe signature header:", sig);
   console.log("Webhook secret loaded:", endpointSecret ? "Loaded" : "Missing");
 
+  if (!endpointSecret) {
+    console.error("Webhook secret is missing. Set JI_UPWORK_STRIPE_WEBHOOK in Vercel env vars.");
+    return res.status(500).send("Webhook secret not configured");
+  }
+
   let event;
 
   try {
-    // Get raw body (required for signature verification)
-    const rawBody = await new Promise((resolve) => {
-      let data = "";
-      req.on("data", (chunk) => (data += chunk));
-      req.on("end", () => resolve(Buffer.from(data)));
-    });
-
+    // Get raw request body
+    const rawBody = await buffer(req);
     console.log("Raw body length:", rawBody.length);
 
     // Verify Stripe webhook signature
@@ -39,7 +40,7 @@ export default async function handler(req, res) {
     console.log("Webhook verified successfully:", event.type);
   } catch (err) {
     console.error("Webhook signature verification failed:", err.message);
-    console.error("RAW signature header:", sig);
+    console.error("Raw signature header:", sig);
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
@@ -74,7 +75,7 @@ export default async function handler(req, res) {
         console.error("Failed to create GHL contact:", errorText);
       } else {
         const ghlData = await ghlResponse.json();
-        console.log("GHL response:", ghlData);
+        console.log("GHL contact created:", ghlData);
       }
     } catch (err) {
       console.error("Error sending data to GHL:", err);
@@ -83,6 +84,6 @@ export default async function handler(req, res) {
     console.log("Unhandled event type:", event.type);
   }
 
-  // Acknowledge receipt to Stripe
+  // Respond to Stripe to acknowledge receipt
   res.status(200).json({ received: true });
 }
