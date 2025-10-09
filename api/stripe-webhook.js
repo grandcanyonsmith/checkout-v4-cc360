@@ -15,23 +15,31 @@ export default async function handler(req, res) {
     return res.status(405).send("Method not allowed");
   }
 
+  // Read signature and webhook secret
   const sig = req.headers["stripe-signature"];
   const endpointSecret = process.env.JI_UPWORK_STRIPE_WEBHOOK;
+
+  console.log("Stripe signature header:", sig);
+  console.log("Webhook secret loaded:", endpointSecret ? "Loaded" : "Missing");
 
   let event;
 
   try {
-    // Get raw request body
+    // Get raw body (required for signature verification)
     const rawBody = await new Promise((resolve) => {
       let data = "";
       req.on("data", (chunk) => (data += chunk));
       req.on("end", () => resolve(Buffer.from(data)));
     });
 
+    console.log("Raw body length:", rawBody.length);
+
     // Verify Stripe webhook signature
     event = stripe.webhooks.constructEvent(rawBody, sig, endpointSecret);
+    console.log("Webhook verified successfully:", event.type);
   } catch (err) {
     console.error("Webhook signature verification failed:", err.message);
+    console.error("RAW signature header:", sig);
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
@@ -43,7 +51,7 @@ export default async function handler(req, res) {
     const email = session.customer_details?.email || "No email";
     const phone = session.customer_details?.phone || "No phone";
 
-    console.log("New Stripe customer:", name, email, phone);
+    console.log("New Stripe customer:", { name, email, phone });
 
     try {
       const ghlResponse = await fetch("https://rest.gohighlevel.com/v1/contacts/", {
@@ -62,7 +70,8 @@ export default async function handler(req, res) {
       });
 
       if (!ghlResponse.ok) {
-        console.error("Failed to create GHL contact:", await ghlResponse.text());
+        const errorText = await ghlResponse.text();
+        console.error("Failed to create GHL contact:", errorText);
       } else {
         const ghlData = await ghlResponse.json();
         console.log("GHL response:", ghlData);
@@ -70,8 +79,10 @@ export default async function handler(req, res) {
     } catch (err) {
       console.error("Error sending data to GHL:", err);
     }
+  } else {
+    console.log("Unhandled event type:", event.type);
   }
 
-  // Return 200 OK to Stripe
+  // Acknowledge receipt to Stripe
   res.status(200).json({ received: true });
 }
