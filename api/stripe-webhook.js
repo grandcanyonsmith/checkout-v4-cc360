@@ -1,6 +1,5 @@
 import Stripe from "stripe";
 import { buffer } from "micro";
-import fetch from "node-fetch";
 
 const stripe = new Stripe(process.env.JI_UPWORK_STRIPE_API, {
   apiVersion: "2025-07-30",
@@ -29,11 +28,9 @@ export default async function handler(req, res) {
   try {
     const rawBody = await buffer(req);
 
-    // Debug: see payload and signature
     console.log("Raw payload (first 300 chars):", rawBody.toString("utf8").slice(0, 300));
     console.log("Stripe signature header:", sig);
 
-    // Verify Stripe webhook
     event = stripe.webhooks.constructEvent(rawBody, sig, endpointSecret);
     console.log("Webhook verified:", event.type);
   } catch (err) {
@@ -41,10 +38,8 @@ export default async function handler(req, res) {
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
-  // Immediately respond to Stripe
   res.status(200).json({ received: true });
 
-  // Fire-and-forget async processing
   (async () => {
     try {
       if (event.type === "checkout.session.completed") {
@@ -56,7 +51,6 @@ export default async function handler(req, res) {
         console.log("Processing Stripe customer:", { name, email, phone });
 
         try {
-          // Debug: show first part of API key
           console.log("GHL API key preview:", process.env.JI_GHL_API?.slice(0, 5) + "...");
 
           const ghlResponse = await fetch("https://rest.gohighlevel.com/v1/contacts/", {
