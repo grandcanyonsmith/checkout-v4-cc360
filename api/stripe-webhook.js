@@ -28,7 +28,10 @@ export default async function handler(req, res) {
   try {
     const rawBody = await buffer(req);
 
-    console.log("Raw payload (first 300 chars):", rawBody.toString("utf8").slice(0, 300));
+    console.log(
+      "Raw payload (first 300 chars):",
+      rawBody.toString("utf8").slice(0, 300)
+    );
     console.log("Stripe signature header:", sig);
 
     event = stripe.webhooks.constructEvent(rawBody, sig, endpointSecret);
@@ -38,8 +41,10 @@ export default async function handler(req, res) {
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
+  // Respond 200 immediately so Stripe does not retry
   res.status(200).json({ received: true });
 
+  // Process the event asynchronously
   (async () => {
     try {
       if (event.type === "checkout.session.completed") {
@@ -51,22 +56,28 @@ export default async function handler(req, res) {
         console.log("Processing Stripe customer:", { name, email, phone });
 
         try {
-          console.log("GHL API key preview:", process.env.JI_GHL_API?.slice(0, 5) + "...");
+          console.log(
+            "GHL API key preview:",
+            process.env.JI_GHL_API?.slice(0, 5) + "..."
+          );
 
-          const ghlResponse = await fetch("https://rest.gohighlevel.com/v1/contacts/", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${process.env.JI_GHL_API}`,
-            },
-            body: JSON.stringify({
-              email,
-              name,
-              phone,
-              source: "Stripe Checkout",
-              tags: ["Stripe", "CourseCreator360"],
-            }),
-          });
+          const ghlResponse = await fetch(
+            "https://rest.gohighlevel.com/v1/contacts/",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${process.env.JI_GHL_API}`,
+              },
+              body: JSON.stringify({
+                email,
+                name,
+                phone,
+                source: "Stripe Checkout",
+                tags: ["Stripe", "CourseCreator360"],
+              }),
+            }
+          );
 
           console.log("GHL status:", ghlResponse.status);
           if (!ghlResponse.ok) {
@@ -80,7 +91,8 @@ export default async function handler(req, res) {
           console.error("Error sending data to GHL:", err);
         }
       } else {
-        console.log("Unhandled event type:", event.type);
+        // Ignore all other event types, log them for debugging
+        console.log("Ignoring non-relevant event type:", event.type);
       }
     } catch (err) {
       console.error("Async processing error:", err);
