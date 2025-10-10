@@ -1,5 +1,6 @@
 import Stripe from "stripe";
 import { buffer } from "micro";
+import fetch from "node-fetch";
 
 const stripe = new Stripe(process.env.JI_UPWORK_STRIPE_API, {
   apiVersion: "2025-07-30",
@@ -7,7 +8,7 @@ const stripe = new Stripe(process.env.JI_UPWORK_STRIPE_API, {
 
 export const config = {
   api: {
-    bodyParser: false,
+    bodyParser: false, // required for webhook verification
   },
 };
 
@@ -20,14 +21,19 @@ export default async function handler(req, res) {
   const endpointSecret = process.env.JI_UPWORK_STRIPE_WEBHOOK;
 
   if (!endpointSecret) {
-    console.error("Webhook secret missing!");
+    console.error("Webhook secret missing");
     return res.status(500).send("Webhook secret not configured");
   }
 
   let event;
   try {
     const rawBody = await buffer(req);
-    console.log("Raw body length:", rawBody.length);
+
+    // Debug: see payload and signature
+    console.log("Raw payload (first 300 chars):", rawBody.toString("utf8").slice(0, 300));
+    console.log("Stripe signature header:", sig);
+
+    // Verify Stripe webhook
     event = stripe.webhooks.constructEvent(rawBody, sig, endpointSecret);
     console.log("Webhook verified:", event.type);
   } catch (err) {
@@ -35,7 +41,7 @@ export default async function handler(req, res) {
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
-  // Immediately acknowledge Stripe
+  // Immediately respond to Stripe
   res.status(200).json({ received: true });
 
   // Fire-and-forget async processing
@@ -50,6 +56,9 @@ export default async function handler(req, res) {
         console.log("Processing Stripe customer:", { name, email, phone });
 
         try {
+          // Debug: show first part of API key
+          console.log("GHL API key preview:", process.env.JI_GHL_API?.slice(0, 5) + "...");
+
           const ghlResponse = await fetch("https://rest.gohighlevel.com/v1/contacts/", {
             method: "POST",
             headers: {
@@ -65,6 +74,7 @@ export default async function handler(req, res) {
             }),
           });
 
+          console.log("GHL status:", ghlResponse.status);
           if (!ghlResponse.ok) {
             const text = await ghlResponse.text();
             console.error("GHL API failed:", text);
