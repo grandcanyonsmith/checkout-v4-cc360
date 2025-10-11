@@ -22,6 +22,17 @@ import FormField from './FormField'
 import PasswordStrength from './PasswordStrength'
 import PhoneInput from './PhoneInput'
 
+// =================================================================================
+// >>> MODIFICATION 1: AFFILIATE TRACKING LOGIC <<<
+// =================================================================================
+
+const AFFILIATE_ID_KEY = 'affiliateId';
+
+// Helper function to consistently retrieve the ID from storage
+const getAffiliateId = () => {
+    return localStorage.getItem(AFFILIATE_ID_KEY);
+};
+
 // Step 1 validation schema (personal info)
 const step1Schema = z.object({
   firstName: z.string().min(1, 'First name is required').min(2, 'First name must be at least 2 characters'),
@@ -103,6 +114,10 @@ export default function CheckoutForm({ pricing, subscriptionType, isSubmitting, 
 
   const watchedPassword = step1Form.watch('password')
 
+  // =================================================================================
+  // >>> MODIFICATION 2: useEffect for Affiliate ID <<<
+  // =================================================================================
+
   // Update password strength when password changes
   useEffect(() => {
     if (watchedPassword) {
@@ -112,6 +127,29 @@ export default function CheckoutForm({ pricing, subscriptionType, isSubmitting, 
     }
   }, [watchedPassword])
 
+  // Affiliate ID Logic
+  useEffect(() => {
+    // A. Try reading affiliateId from the URL query parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const affiliateIdFromUrl = urlParams.get(AFFILIATE_ID_KEY);
+
+    if (affiliateIdFromUrl) {
+        // If found in the URL, save it to localStorage, overwriting any previous one
+        localStorage.setItem(AFFILIATE_ID_KEY, affiliateIdFromUrl);
+        console.log(`Affiliate ID found in URL and saved: ${affiliateIdFromUrl}`);
+    } else {
+        // Check if ID is already in localStorage from a previous visit
+        const storedAffiliateId = getAffiliateId();
+        if (storedAffiliateId) {
+            console.log(`Affiliate ID found in localStorage: ${storedAffiliateId}`);
+        } else {
+            console.log('No Affiliate ID found in URL or localStorage.');
+        }
+    }
+  }, []); // Runs only once on component mount
+  // ---------------------------------------------------------------------------------
+
+
   const showError = (message) => {
     setFormError(message)
     toast.error(message)
@@ -120,8 +158,6 @@ export default function CheckoutForm({ pricing, subscriptionType, isSubmitting, 
   const clearError = () => {
     setFormError('')
   }
-
-
 
   // Validate email with Mailgun API
   const validateEmail = async (email) => {
@@ -321,6 +357,7 @@ export default function CheckoutForm({ pricing, subscriptionType, isSubmitting, 
     if (isSubmitting) return
 
     const combinedData = { ...step1Data, ...step2Data }
+    const affiliateId = getAffiliateId(); // Retrieve affiliate ID
 
     try {
       setIsSubmitting(true)
@@ -338,6 +375,9 @@ export default function CheckoutForm({ pricing, subscriptionType, isSubmitting, 
           email: combinedData.email,
           name: `${combinedData.firstName} ${combinedData.lastName}`,
           phone: combinedData.phone.replace(/\D/g, ''),
+          // >>> MODIFICATION 3: Adding affiliateId to create-customer API call <<<
+          affiliateId: affiliateId,
+          // ------------------------------------------------------------------------
           metadata: {
             subscription_type: subscriptionType,
             trial_signup: new Date().toISOString()
@@ -412,6 +452,9 @@ export default function CheckoutForm({ pricing, subscriptionType, isSubmitting, 
           customerId: customerId,
           paymentMethodId: setupIntent.payment_method,
           priceId: pricing.priceId,
+          // >>> MODIFICATION 4: Adding affiliateId to start-trial API call <<<
+          affiliateId: affiliateId, 
+          // -------------------------------------------------------------------
           userInfo: {
             firstName: combinedData.firstName,
             lastName: combinedData.lastName,
@@ -924,4 +967,4 @@ export default function CheckoutForm({ pricing, subscriptionType, isSubmitting, 
       </div>
     </div>
   )
-} 
+}
