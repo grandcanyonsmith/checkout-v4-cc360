@@ -32,6 +32,10 @@ app.use(cors({
 
 app.use(express.json({ limit: '10mb' }))
 
+// Stripe Upwork webhook (JI-UPWORK)
+app.use("/api", stripeWebhookUpwork);
+
+
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
 
