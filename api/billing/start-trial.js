@@ -18,7 +18,8 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { customerId, paymentMethodId, priceId, userInfo } = req.body;
+    // MODIFICATION 1: Read affiliateId and other tracking fields directly from req.body
+    const { customerId, paymentMethodId, priceId, userInfo, affiliateId, referrer, campaign } = req.body;
 
     // Validate required fields
     if (!customerId || !paymentMethodId || !priceId || !userInfo?.email) {
@@ -40,6 +41,18 @@ export default async function handler(req, res) {
     await stripe.customers.update(customerId, {
       invoice_settings: { default_payment_method: paymentMethodId }
     });
+    
+    // MODIFICATION 2: Create a consolidated metadata object for consistency
+    const userMetadata = {
+        firstName: userInfo.firstName,
+        lastName: userInfo.lastName,
+        email: userInfo.email,
+        phone: userInfo.phone,
+        // Use the affiliateId sent in the main body (highest priority)
+        affiliateId: affiliateId || userInfo.affiliateId || '', 
+        referrer: referrer || userInfo.referrer || '',
+        campaign: campaign || userInfo.campaign || '',
+    };
 
     // Create subscription with 30-day trial
     const subscription = await stripe.subscriptions.create({
@@ -49,12 +62,13 @@ export default async function handler(req, res) {
       default_payment_method: paymentMethodId,
       collection_method: 'charge_automatically',
       expand: ['latest_invoice'],
+      // MODIFICATION 3: Update subscription metadata with affiliate ID
       metadata: {
         signup_source: 'course_creator_360_trial',
-        user_info: JSON.stringify(userInfo),
-        affiliateId: userInfo.affiliateId || '',
-        referrer: userInfo.referrer || '',
-        campaign: userInfo.campaign || '',
+        user_info: JSON.stringify(userMetadata), 
+        affiliate_id: userMetadata.affiliateId, // Use affiliate_id for Stripe metadata
+        referrer: userMetadata.referrer,
+        campaign: userMetadata.campaign,
         trial_started: new Date().toISOString()
       }
     });
@@ -69,22 +83,24 @@ export default async function handler(req, res) {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            firstName: userInfo.name,
-            email: userInfo.email,
-            phone: userInfo.phone,
-            affiliateId: userInfo.affiliateId || '',
-            referrer: userInfo.referrer || '',
-            campaign: userInfo.campaign || ''
+            // MODIFICATION 4: Use consolidated userMetadata for GHL and include lastName
+            firstName: userMetadata.firstName,
+            lastName: userMetadata.lastName, 
+            email: userMetadata.email,
+            phone: userMetadata.phone,
+            affiliateId: userMetadata.affiliateId,
+            referrer: userMetadata.referrer,
+            campaign: userMetadata.campaign
           })
         });
-        console.log(`Lead sent to GHL for ${userInfo.email}, affiliate: ${userInfo.affiliateId}`);
+        console.log(`Lead sent to GHL for ${userMetadata.email}, affiliate: ${userMetadata.affiliateId}`);
       }
     } catch (ghlError) {
       console.error('GHL API error:', ghlError);
     }
 
     // Log subscription creation
-    console.log(`Trial subscription created for ${userInfo.email}, affiliate: ${userInfo.affiliateId}`);
+    console.log(`Trial subscription created for ${userMetadata.email}, affiliate: ${userMetadata.affiliateId}`);
 
     res.json({
       subscriptionId: subscription.id,

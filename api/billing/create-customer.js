@@ -18,12 +18,16 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { email, name, phone, zipCode, metadata } = req.body;
+    // MODIFICATION 1: Read affiliateId from the request body
+    const { email, name, phone, zipCode, metadata, affiliateId } = req.body;
 
     // Validate required fields
     if (!email || !name) {
       return res.status(400).json({ error: 'Missing required customer information' });
     }
+
+    // Prepare affiliate metadata for consistent use (using snake_case for Stripe)
+    const affiliateMetadata = affiliateId ? { affiliate_id: affiliateId } : {};
 
     // Check if customer already exists
     const existingCustomers = await stripe.customers.list({
@@ -42,6 +46,8 @@ export default async function handler(req, res) {
         metadata: {
           ...customer.metadata,
           ...metadata,
+          // MODIFICATION 2: Add affiliateId to metadata on UPDATE
+          ...affiliateMetadata, 
           updated_at: new Date().toISOString()
         }
       };
@@ -63,6 +69,8 @@ export default async function handler(req, res) {
         phone,
         metadata: {
           ...metadata,
+          // MODIFICATION 3: Add affiliateId to metadata on CREATE
+          ...affiliateMetadata,
           created_at: new Date().toISOString()
         }
       };
@@ -101,4 +109,3 @@ export default async function handler(req, res) {
       type: error.type || 'unknown_error'
     });
   }
-} 
