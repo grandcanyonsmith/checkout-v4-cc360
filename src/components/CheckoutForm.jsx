@@ -32,15 +32,27 @@ const AFFILIATE_ID_STORAGE_KEY = 'affiliateId'; // Internal key
 
 /**
  * Retrieves the stored affiliate ID, defaulting to 'none' if not found.
+ * 💡 MODIFIED: Prioritizes reading from URL query parameters (am_id) first.
  * @returns {string} The affiliate ID or 'none'.
  */
 const getAffiliateId = () => {
     if (typeof window === 'undefined') return 'none';
+
+    // 1. PRIORITIZE URL: Check if am_id is currently in the page URL (?am_id=...)
+    const urlParams = new URLSearchParams(window.location.search);
+    const amIdFromUrl = urlParams.get(AFFILIATE_ID_QUERY_KEY);
+    
+    if (amIdFromUrl) {
+        return amIdFromUrl; // Use the URL value immediately
+    }
+
+    // 2. FALLBACK TO LOCAL STORAGE (if not in URL)
     return localStorage.getItem(AFFILIATE_ID_STORAGE_KEY) || 'none';
 };
 
 /**
  * Initializes affiliate ID tracking from URL or storage.
+ * (This function handles initial saving to localStorage and remains unchanged)
  */
 const initializeAffiliateTracking = () => {
     if (typeof window === 'undefined') return;
@@ -164,8 +176,6 @@ export default function CheckoutForm({ pricing, subscriptionType, isSubmitting, 
   };
 
   // Email/Phone Validation Logic (No changes needed here, keeping your original logic)
-  // ... (validateEmail and validatePhone functions remain as is)
-  
   const validateEmail = async (email) => { /* ... existing logic ... */ return true; };
   const validatePhone = async (phone) => { /* ... existing logic ... */ return true; };
 
@@ -211,7 +221,7 @@ export default function CheckoutForm({ pricing, subscriptionType, isSubmitting, 
     if (isSubmitting) return;
 
     const combinedData = { ...step1Data, ...step2Data };
-    // Get the reliably stored affiliate ID (will be 'none' if not found)
+    // Get the reliably stored affiliate ID (will now prioritize URL query parameter)
     const affiliateId = getAffiliateId(); 
 
     try {
