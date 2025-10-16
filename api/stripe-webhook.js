@@ -2,10 +2,14 @@ import Stripe from "stripe";
 import { buffer } from "micro";
 import axios from 'axios';
 
-// Initialize Stripe with the dedicated API key.
+// Initialize Stripe using the existing environment variable name: JI_UPWORK_STRIPE_API
 const stripe = new Stripe(process.env.JI_UPWORK_STRIPE_API, {
   apiVersion: "2023-10-16",
 });
+
+// GHL API Key and the new dedicated Renewal Webhook URL, named consistently
+const GHL_API_KEY = process.env.JI_GHL_API;
+const GHL_RENEWAL_WEBHOOK_URL = process.env.JI_UPWORK_GHL_RENEWAL_WEBHOOK_URL; 
 
 // Required for Vercel to handle the raw body data
 export const config = {
@@ -14,7 +18,46 @@ export const config = {
   },
 };
 
-// --- ASYNC FUNCTION: Fetches Customer and executes GHL logic (The Fix) ---
+// -----------------------------------------------------------------------
+// --- GHL TRANSACTION FUNCTION (FOR RENEWALS) ---
+// -----------------------------------------------------------------------
+/**
+ * Sends a transaction record to GoHighLevel via a dedicated webhook.
+ * This ensures the revenue is logged and commission is tracked using the am_id.
+ * @param {object} transactionData - Data including customerId, amount, and affiliateId.
+ */
+async function sendRenewalTransactionToGHL(transactionData) {
+    if (!GHL_RENEWAL_WEBHOOK_URL) {
+        console.error("JI_UPWORK_GHL_RENEWAL_WEBHOOK_URL is not set. Cannot record renewal transaction.");
+        return;
+    }
+    
+    console.log("Preparing GHL Renewal Transaction Payload:", transactionData);
+
+    try {
+        // This hits a dedicated GHL Webhook designed to create an Opportunity/Transaction
+        // and attribute the commission using the am_id.
+        const response = await axios.post(GHL_RENEWAL_WEBHOOK_URL, {
+            // These keys should match what your GHL workflow webhook expects
+            stripeCustomerId: transactionData.customerId,
+            renewalAmount: transactionData.amount,
+            am_id: transactionData.affiliateId, // CRITICAL: This links the commission
+            renewalDate: new Date().toISOString(),
+            status: 'renewal_succeeded',
+        });
+
+        console.log(`GHL Renewal Webhook Response Status: ${response.status}`);
+        console.log("GHL Renewal Transaction successfully recorded.");
+        
+    } catch (error) {
+        console.error("GHL Renewal Webhook failed:", error.response ? error.response.data : error.message);
+    }
+}
+
+
+// -----------------------------------------------------------------------
+// --- ASYNC FUNCTION: Fetches Customer and executes GHL logic (Initial Signup) ---
+// -----------------------------------------------------------------------
 async function fetchCustomerAndProcessGHL(customerId, subscriptionId) {
     // 1. CRITICAL STEP: Fetch the full Customer object from Stripe
     if (!customerId) {
@@ -24,43 +67,36 @@ async function fetchCustomerAndProcessGHL(customerId, subscriptionId) {
 
     let customer;
     try {
-      // This ensures we get all the data, including metadata, guaranteed to be on Stripe's server.
       customer = await stripe.customers.retrieve(customerId);
     } catch (error) {
       console.error("Failed to retrieve Customer from Stripe:", error.message);
       return;
     }
 
-    // 2. Data Extraction from the guaranteed source (Customer object and Metadata)
+    // 2. Data Extraction
     const name = customer.name || "Unknown";
     const email = customer.email || "No email";
-    
-    // Use data stored in metadata (from create-customer.js) if available, otherwise use customer object fields.
-    const phone = customer.phone || customer.metadata.phone || "No phone"; 
-    
-    // Affiliate ID is stored in metadata as 'affiliate_id' by create-customer.js
+    const phone = customer.phone || customer.metadata.phone || "No phone"; 
+    
+    // Affiliate ID is stored in metadata as 'affiliate_id'
     const affiliateId = customer.metadata.affiliate_id || 'none'; 
-    
-    // Extract names (safeguard)
+    
+    // Extract names 
     const nameParts = name.split(' ');
     const firstName = customer.metadata.firstName || nameParts[0] || name;
     const lastName = customer.metadata.lastName || (nameParts.length > 1 ? nameParts.slice(1).join(' ') : "");
     
-    console.log("Processing customer (Guaranteed Data):", { firstName, lastName, email, phone, affiliateId });
-
     if (email === "No email") {
-      // This error should ideally no longer happen.
       return console.error("Skipping GHL call: Email is missing even after full customer retrieval.");
     }
-    
+    
     // 3. GHL Logic Execution
     try { 
       const GHL_ENDPOINT = "https://rest.gohighlevel.com/v1/contacts/";
-      const GHL_API_KEY = process.env.JI_GHL_API;
       const GHL_LOCATION_ID = process.env.JI_GHL_LOCATION_ID;
 
-      if (!GHL_LOCATION_ID) {
-         return console.error("GHL Location ID missing (JI_GHL_LOCATION_ID). Aborting GHL call.");
+      if (!GHL_LOCATION_ID || !GHL_API_KEY) {
+         return console.error("GHL credentials missing. Aborting initial contact creation.");
       }
 
       const ghlPayload = {
@@ -73,52 +109,45 @@ async function fetchCustomerAndProcessGHL(customerId, subscriptionId) {
           // Affiliate tracking tag
           tags: ["Stripe", "CC360", `affiliate-${affiliateId}`],
           // Add subscription ID for better tracking in GHL
-          customField: { 
-            subscription_id: subscriptionId 
+          customField: { 
+            subscription_id: subscriptionId 
           }
       };
 
-      console.log("Attempting to send guaranteed payload to GHL.");
+      console.log("Attempting to send guaranteed payload to GHL for initial contact creation/update.");
       
-      // CRITICAL: This Axios call must complete synchronously before returning 200 OK.
       try {
          const ghlResponse = await axios.post(GHL_ENDPOINT, ghlPayload, {
            headers: {
              "Content-Type": "application/json",
              Authorization: `Bearer ${GHL_API_KEY}`,
            },
-           timeout: 10000, // 10-second timeout
+           timeout: 10000,
          });
 
-         // AXIOS Success Logging (GHL responded with 200/201)
-         console.log("GHL Response Status:", ghlResponse.status);
-         console.log("GHL contact created/updated successfully.");
+         console.log("GHL contact successfully created/updated.");
 
       } catch (axiosError) {
-         // CRITICAL: CATCHING ALL AXIOS ERRORS
-         if (axiosError.response) {
-            console.error("GHL API failed (AXIOS):", axiosError.response.status, axiosError.response.data);
-         } else if (axiosError.request) {
-            console.error("CRITICAL AXIOS NETWORK ERROR:", "No response received from GHL endpoint (Timeout/DNS).");
-         } else {
-            console.error("CRITICAL AXIOS SETUP ERROR:", axiosError.message);
-         }
+         console.error("GHL API failed during initial contact processing.");
       }
     } catch (innerErr) {
       console.error("Internal Error during GHL processing:", innerErr);
     }
 }
-// --- END ASYNC FUNCTION ---
 
 
+// -----------------------------------------------------------------------
+// --- MAIN WEBHOOK HANDLER ---
+// -----------------------------------------------------------------------
 export default async function handler(req, res) {
   if (req.method !== "POST") {
-    return res.status(405).send("Method not allowed");
+    return res.status(405).send("Method Not Allowed");
   }
 
   // 1. Webhook Verification Setup
   const sig = req.headers["stripe-signature"];
-  const endpointSecret = process.env.JI_UPWORK_STRIPE_WEBHOOK; // Use the secret for this specific endpoint
+  // Using the existing environment variable name: JI_UPWORK_STRIPE_WEBHOOK
+  const endpointSecret = process.env.JI_UPWORK_STRIPE_WEBHOOK;
 
   if (!endpointSecret) {
     console.error("Webhook secret missing (JI_UPWORK_STRIPE_WEBHOOK)");
@@ -133,28 +162,64 @@ export default async function handler(req, res) {
     event = stripe.webhooks.constructEvent(rawBody, sig, endpointSecret);
     console.log("Webhook verified successfully. Event type:", event.type);
   } catch (err) {
-    console.error("Webhook signature verification failed:", err.message);
+    console.error("Stripe signature verification failed:", err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
-  // 3. Process the Event SYNCHRONOUSLY
-  if (
-    event.type === "checkout.session.completed" ||
-    event.type === "customer.subscription.created"
-  ) {
-    // Extract IDs needed for guaranteed retrieval
-    const customerId = event.data.object.customer;
-    const subscriptionId = event.type === "customer.subscription.created" ? event.data.object.id : null;
-    
-    // KEY CHANGE: Use the new function that guarantees data retrieval
-    await fetchCustomerAndProcessGHL(customerId, subscriptionId);
-  } else if (event.type === "invoice.payment_succeeded") {
-    // Ignore successful renewal payments to prevent duplicate contact creation.
-    console.log("Subscription renewed (invoice.payment_succeeded). Ignoring GHL contact creation.");
-  } else {
-    console.log("Ignoring non-relevant event type:", event.type);
-  }
+  // 3. Process the Event
+  try {
+    switch (event.type) {
+      case "checkout.session.completed":
+      case "customer.subscription.created":
+        // Initial Signup: Call the function that guarantees contact creation/update
+        const customerId = event.data.object.customer;
+        const subscriptionId = event.type === "customer.subscription.created" ? event.data.object.id : null;
+        
+        await fetchCustomerAndProcessGHL(customerId, subscriptionId);
+        break;
 
-  // 4. Respond 200 OK after ALL synchronous processing (including GHL) is done.
-  return res.status(200).json({ received: true });
+      case "invoice.payment_succeeded":
+        // === FIX: Handle Subscription Renewal Transaction (Affiliate Commission Tracking) ===
+        const invoice = event.data.object;
+        
+        // Check if this is a recurring renewal payment
+        if (invoice.billing_reason === 'subscription_cycle' && invoice.status === 'paid') {
+            
+            const renewalCustomerId = invoice.customer;
+            const amount = invoice.amount_paid / 100; // Convert cents to dollars
+            
+            // Fetch customer again to retrieve metadata (affiliate_id)
+            const customer = await stripe.customers.retrieve(renewalCustomerId);
+            const affiliateId = customer.metadata.affiliate_id; // The stored am_id
+            
+            if (!affiliateId) {
+                console.warn(`Renewal processed, but affiliate ID missing for customer ${renewalCustomerId}. Will use 'none'.`);
+            }
+
+            // Send transaction data to GHL Webhook
+            await sendRenewalTransactionToGHL({
+                customerId: renewalCustomerId,
+                amount: amount,
+                affiliateId: affiliateId || 'none', // Use stored ID or 'none'
+            });
+
+            console.log(`Renewal transaction recorded. Amount: $${amount}. AM_ID: ${affiliateId || 'none'}.`);
+            
+        } else {
+            // Ignore non-renewal payments (e.g., failed payments, one-time fees, etc.)
+            console.log("Ignoring non-renewal or unpaid invoice.");
+        }
+        break;
+
+      default:
+        console.log("Ignoring non-relevant event type:", event.type);
+    }
+
+    // 4. Respond 200 OK after ALL synchronous processing is done.
+    return res.status(200).json({ received: true });
+  } catch (err) {
+    console.error(`Error processing webhook event: ${err.message}`);
+    // Returning a 500 error signals Stripe to retry the webhook
+    res.status(500).json({ error: 'Webhook processing failed' });
+  }
 }
