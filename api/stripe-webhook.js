@@ -78,7 +78,7 @@ async function fetchCustomerAndProcessGHL(customerId, subscriptionId) {
     const email = customer.email || "No email";
     const phone = customer.phone || customer.metadata.phone || "No phone"; 
     
-    // ✅ KRITIČNA ISPAVKA: Proveravamo 'affiliateId' (camelCase) PRVO, pa 'affiliate_id' (legacy)
+    // CRITICAL FIX (Already correct): Check 'affiliateId' (camelCase) first, then 'affiliate_id' (legacy/default)
     const affiliateId = customer.metadata.affiliateId || customer.metadata.affiliate_id || 'none'; 
     
     // Extract names 
@@ -191,10 +191,10 @@ export default async function handler(req, res) {
             // Fetch customer again to retrieve metadata (affiliate_id)
             const customer = await stripe.customers.retrieve(renewalCustomerId);
             
-            // ✅ KRITIČNA ISPAVKA: Proveravamo 'affiliateId' (camelCase) PRVO, pa 'affiliate_id' (legacy)
-            const affiliateId = customer.metadata.affiliateId || customer.metadata.affiliate_id; 
+            // CRITICAL FIX: Ensure a default value of 'none' is always applied.
+            const finalAffiliateId = customer.metadata.affiliateId || customer.metadata.affiliate_id || 'none';
             
-            if (!affiliateId) {
+            if (finalAffiliateId === 'none') {
                 console.warn(`Renewal processed, but affiliate ID missing for customer ${renewalCustomerId}. Will use 'none'.`);
             }
 
@@ -202,10 +202,10 @@ export default async function handler(req, res) {
             await sendRenewalTransactionToGHL({
                 customerId: renewalCustomerId,
                 amount: amount,
-                affiliateId: affiliateId || 'none', // Use stored ID or 'none'
+                affiliateId: finalAffiliateId, // Use the final, guaranteed value
             });
 
-            console.log(`Renewal transaction recorded. Amount: $${amount}. AM_ID: ${affiliateId || 'none'}.`);
+            console.log(`Renewal transaction recorded. Amount: $${amount}. AM_ID: ${finalAffiliateId}.`);
             
         } else {
             // Ignore non-renewal payments (e.g., failed payments, one-time fees, etc.)
