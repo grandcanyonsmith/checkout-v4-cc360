@@ -18,16 +18,25 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Reads affiliateId (camelCase) from the request body
-    const { email, name, phone, zipCode, metadata, affiliateId } = req.body;
+    // 1. Destructure core customer data
+    const { email, name, phone, zipCode, metadata } = req.body;
+
+    // 2. ROBUST FALLBACK LOGIC FOR AFFILIATE ID
+    // Check for multiple possible keys (affiliateId, amId, am_id) and use the first one found.
+    const rawAffiliateId = 
+      req.body.affiliateId ||   // Key 1: Original camelCase
+      req.body.amId ||          // Key 2: GHL/Front-end camelCase variation
+      req.body.am_id ||         // Key 3: Standard snake_case
+      null;                     // Fallback to null if none is found
+
+    // 3. Prepare Affiliate Metadata for Stripe
+    // Affiliate ID is stored in Stripe metadata using snake_case: affiliate_id
+    const affiliateMetadata = rawAffiliateId ? { affiliate_id: rawAffiliateId } : {};
 
     // Validate required fields
     if (!email || !name) {
       return res.status(400).json({ error: 'Missing required customer information' });
     }
-
-    // Prepare affiliate metadata: affiliateId is read, saved as affiliate_id (snake_case)
-    const affiliateMetadata = affiliateId ? { affiliate_id: affiliateId } : {};
 
     // Check if customer already exists
     const existingCustomers = await stripe.customers.list({
@@ -46,7 +55,7 @@ export default async function handler(req, res) {
         metadata: {
           ...customer.metadata,
           ...metadata,
-          // Add affiliateId to metadata on UPDATE
+          // Add/Update affiliate ID to metadata on UPDATE. This is crucial for renewals.
           ...affiliateMetadata, 
           updated_at: new Date().toISOString()
         }
@@ -69,7 +78,7 @@ export default async function handler(req, res) {
         phone,
         metadata: {
           ...metadata,
-          // Add affiliateId to metadata on CREATE
+          // Add affiliate ID to metadata on CREATE. This is crucial for renewals.
           ...affiliateMetadata,
           created_at: new Date().toISOString()
         }

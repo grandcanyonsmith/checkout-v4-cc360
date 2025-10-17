@@ -351,9 +351,8 @@ export default function CheckoutForm({ pricing, subscriptionType, isSubmitting, 
 
     const combinedData = { ...step1Data, ...step2Data }
 
-    // --- NEW LOGIC FOR AFFILIATE ID AND PHONE FORMAT (Fixes 400 error) ---
+    // --- NEW LOGIC FOR AFFILIATE ID AND PHONE FORMAT ---
     // 1. Format phone number to E.164 (retains '+' and digits, removes other characters)
-    //    This is crucial to fix the 400 Bad Request error from Stripe
     const formattedPhone = combinedData.phone.replace(/[^\d+]/g, ''); 
     
     // 2. Retrieve affiliate ID from Local Storage
@@ -375,12 +374,15 @@ export default function CheckoutForm({ pricing, subscriptionType, isSubmitting, 
         body: JSON.stringify({
           email: combinedData.email,
           name: `${combinedData.firstName} ${combinedData.lastName}`,
-          phone: formattedPhone, // FIXED: Use formatted phone
+          phone: formattedPhone, // Use formatted phone
           metadata: {
             subscription_type: subscriptionType,
             trial_signup: new Date().toISOString()
           },
-          affiliateId: affiliateId // NEW: Send affiliate ID (camelCase)
+          // **********************************************
+          // FIX 1: Send affiliate ID using the consistent 'am_id' key (snake_case)
+          // **********************************************
+          am_id: affiliateId 
         })
       })
 
@@ -425,7 +427,7 @@ export default function CheckoutForm({ pricing, subscriptionType, isSubmitting, 
             billing_details: {
               name: `${combinedData.firstName} ${combinedData.lastName}`,
               email: combinedData.email,
-              phone: formattedPhone // FIXED: Use formatted phone
+              phone: formattedPhone // Use formatted phone
             }
           }
         },
@@ -455,9 +457,12 @@ export default function CheckoutForm({ pricing, subscriptionType, isSubmitting, 
             firstName: combinedData.firstName,
             lastName: combinedData.lastName,
             email: combinedData.email,
-            phone: formattedPhone // FIXED: Use formatted phone
+            phone: formattedPhone // Use formatted phone
           },
-          affiliateId: affiliateId, // NEW: Send affiliate ID (camelCase) for GHL tracking
+          // **********************************************
+          // FIX 2: Send affiliate ID using the consistent 'am_id' key (snake_case)
+          // **********************************************
+          am_id: affiliateId, 
         })
       })
 
@@ -502,9 +507,6 @@ export default function CheckoutForm({ pricing, subscriptionType, isSubmitting, 
     <div className="card mt-0 mb-8 lg:my-20 animate-fade-in">
       <div className="card-body space-y-6">
       
-        {/* ... (Rest of the JSX is the same) ... */}
-        {/* This part of the code is the same as the user's original file, omitted for brevity. */}
-
         {/* Header */}
         <div className="text-center">
           <h2 className="text-2xl font-bold mb-2" style={{ color: '#111D2C' }}>

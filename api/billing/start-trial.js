@@ -18,8 +18,29 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Reads affiliateId (camelCase) and other tracking fields directly from req.body
-    const { customerId, paymentMethodId, priceId, userInfo, affiliateId, referrer, campaign } = req.body;
+    // 1. Destructure core data (we'll handle affiliate IDs separately)
+    const { customerId, paymentMethodId, priceId, userInfo, referrer, campaign } = req.body;
+
+    // 2. ROBUST AFFILIATE ID FALLBACK LOGIC
+    // Check for all possible naming conventions to ensure the ID is captured.
+    const rawAffiliateId = 
+        req.body.affiliateId ||   // Key 1: Explicitly passed
+        req.body.amId ||          // Key 2: GHL/Front-end camelCase variation
+        req.body.am_id ||         // Key 3: Standard snake_case
+        userInfo.affiliateId ||   // Key 4: Nested under userInfo (as currently done)
+        'none';                   // Fallback to 'none' if nothing is found
+
+    // 3. Prepare consolidated metadata object
+    const userMetadata = {
+        firstName: userInfo.firstName,
+        lastName: userInfo.lastName,
+        email: userInfo.email,
+        phone: userInfo.phone,
+        // Ensure the consolidated object uses the captured ID
+        affiliateId: rawAffiliateId, 
+        referrer: referrer || userInfo.referrer || '',
+        campaign: campaign || userInfo.campaign || '',
+    };
 
     // Validate required fields
     if (!customerId || !paymentMethodId || !priceId || !userInfo?.email) {
@@ -42,18 +63,6 @@ export default async function handler(req, res) {
       invoice_settings: { default_payment_method: paymentMethodId }
     });
     
-    // Create a consolidated metadata object for consistency
-    const userMetadata = {
-        firstName: userInfo.firstName,
-        lastName: userInfo.lastName,
-        email: userInfo.email,
-        phone: userInfo.phone,
-        // Use the affiliateId sent in the main body (highest priority)
-        affiliateId: affiliateId || userInfo.affiliateId || '', 
-        referrer: referrer || userInfo.referrer || '',
-        campaign: campaign || userInfo.campaign || '',
-    };
-
     // Create subscription with 30-day trial
     const subscription = await stripe.subscriptions.create({
       customer: customerId,
@@ -66,7 +75,8 @@ export default async function handler(req, res) {
       metadata: {
         signup_source: 'course_creator_360_trial',
         user_info: JSON.stringify(userMetadata), 
-        affiliate_id: userMetadata.affiliateId, // Uses affiliate_id (snake_case) for Stripe metadata
+        // CRITICAL FIX: Use the reliably captured ID and snake_case for Stripe
+        affiliate_id: userMetadata.affiliateId, 
         referrer: userMetadata.referrer,
         campaign: userMetadata.campaign,
         trial_started: new Date().toISOString()
@@ -88,6 +98,7 @@ export default async function handler(req, res) {
             lastName: userMetadata.lastName, 
             email: userMetadata.email,
             phone: userMetadata.phone,
+            // Ensure GHL receives the reliably captured ID
             affiliateId: userMetadata.affiliateId,
             referrer: userMetadata.referrer,
             campaign: userMetadata.campaign
