@@ -1,8 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useForm, Controller } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useStripe, useElements, PaymentElement } from '@stripe/react-stripe-js';
-import toast from 'react-hot-toast';
+import { useState, useEffect } from 'react'
+import { useForm, Controller } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { useStripe, useElements, PaymentElement } from '@stripe/react-stripe-js'
+import toast from 'react-hot-toast'
 import { 
   CreditCardIcon,
   ExclamationCircleIcon,
@@ -10,94 +10,38 @@ import {
   CheckCircleIcon,
   EyeIcon,
   EyeSlashIcon
-} from '@heroicons/react/24/outline';
-import { z } from 'zod';
+} from '@heroicons/react/24/outline'
+import { z } from 'zod'
 
-import { cn } from '../utils/cn';
-import { validatePasswordStrength } from '../utils/validation';
-import { countries } from '../utils/countries';
-import { validatePhoneNumber } from '../utils/countries'; // Assuming this is correct
-import emailValidator from '../utils/emailValidation';
-import phoneValidator from '../utils/phoneValidation';
-import FormField from './FormField';
-import PasswordStrength from './PasswordStrength';
-import PhoneInput from './PhoneInput';
-
-// =================================================================================
-// >>> AFFILIATE TRACKING CONFIGURATION AND LOGIC <<<
-// =================================================================================
-
-const AFFILIATE_ID_QUERY_KEY = 'am_id'; 
-const AFFILIATE_ID_STORAGE_KEY = 'affiliateId'; // Internal Key
-
-/**
- * Retrieves the stored affiliate ID, defaulting to 'none' if not found.
- * 💡 MODIFIED: Prioritizes reading from URL query parameters (am_id) first.
- * @returns {string} The affiliate ID or 'none'.
- */
-const getAffiliateId = () => {
-    if (typeof window === 'undefined') return 'none';
-
-    // 1. PRIORITIZE URL: Check if am_id is currently in the page URL (?am_id=...)
-    const urlParams = new URLSearchParams(window.location.search);
-    const amIdFromUrl = urlParams.get(AFFILIATE_ID_QUERY_KEY);
-    
-    if (amIdFromUrl) {
-        return amIdFromUrl; // Use the URL value immediately
-    }
-
-    // 2. FALLBACK TO LOCAL STORAGE (if not in URL)
-    return localStorage.getItem(AFFILIATE_ID_STORAGE_KEY) || 'none';
-};
-
-/**
- * Initializes affiliate ID tracking from URL or storage.
- * (This function handles initial saving to localStorage and remains unchanged)
- */
-const initializeAffiliateTracking = () => {
-    if (typeof window === 'undefined') return;
-
-    const urlParams = new URLSearchParams(window.location.search);
-    const amIdFromUrl = urlParams.get(AFFILIATE_ID_QUERY_KEY);
-    const storedAffiliateId = localStorage.getItem(AFFILIATE_ID_STORAGE_KEY);
-
-    if (amIdFromUrl) {
-        // Found in URL: save it and ensure tracking is set
-        localStorage.setItem(AFFILIATE_ID_STORAGE_KEY, amIdFromUrl);
-        // console.log(`Affiliate ID found in URL and saved: ${amIdFromUrl}`);
-    } else if (!storedAffiliateId) {
-        // Not in URL and not in storage: set the default 'none'
-        localStorage.setItem(AFFILIATE_ID_STORAGE_KEY, 'none');
-        // console.log('No Affiliate ID found, setting to: none');
-    } else {
-        // ID is already in storage, use it
-        // console.log(`Affiliate ID found in localStorage: ${storedAffiliateId}`);
-    }
-};
-
-// =================================================================================
-// >>> VALIDATION SCHEMAS <<<
-// =================================================================================
+import { cn } from '../utils/cn'
+import { validatePasswordStrength } from '../utils/validation'
+import { validatePhoneNumber, countries } from '../utils/countries'
+import emailValidator from '../utils/emailValidation'
+import phoneValidator from '../utils/phoneValidation'
+import FormField from './FormField'
+import PasswordStrength from './PasswordStrength'
+import PhoneInput from './PhoneInput'
 
 // Step 1 validation schema (personal info)
 const step1Schema = z.object({
-  firstName: z.string().min(2, 'First name must be at least 2 characters'),
-  lastName: z.string().min(2, 'Last name must be at least 2 characters'),
+  firstName: z.string().min(1, 'First name is required').min(2, 'First name must be at least 2 characters'),
+  lastName: z.string().min(1, 'Last name is required').min(2, 'Last name must be at least 2 characters'),
   email: z.string().min(1, 'Email is required').email('Please enter a valid email address'),
   phone: z.string()
     .min(1, 'Phone number is required')
     .refine((phone) => {
-      const match = phone.match(/^(\+\d+)\s*(.*)$/);
-      if (!match) return false;
+      // Parse country code and phone number
+      const match = phone.match(/^(\+\d+)\s*(.*)$/)
+      if (!match) return false
       
-      const dialCode = match[1];
-      const phoneNumber = match[2];
+      const dialCode = match[1]
+      const phoneNumber = match[2]
       
-      const country = countries.find(c => c.dialCode === dialCode);
-      if (!country) return false;
+      // Find country by dial code
+      const country = countries.find(c => c.dialCode === dialCode)
+      if (!country) return false
       
-      // Assuming validatePhoneNumber is correctly imported and functional
-      return validatePhoneNumber(phoneNumber, country.code); 
+      return validatePhoneNumber(phoneNumber, country.code)
     }, 'Please enter a valid phone number'),
   password: z.string()
     .min(8, 'Password must be at least 8 characters')
@@ -107,173 +51,371 @@ const step1Schema = z.object({
         /[A-Z]/.test(password), // uppercase
         /\d/.test(password),    // numbers
         /[!@#$%^&*(),.?":{}|<>]/.test(password) // symbols
-      ];
-      return checks.filter(Boolean).length >= 3;
+      ]
+      return checks.filter(Boolean).length >= 3
     }, 'Password must meet at least 3 of the 4 requirements')
-});
+})
 
 // Step 2 validation schema (terms)
 const step2Schema = z.object({
   terms: z.boolean().refine(val => val === true, 'You must agree to the terms and conditions')
-});
+})
 
-// =================================================================================
-// >>> MAIN COMPONENT <<<
-// =================================================================================
+// Combined schema for final submission
+const fullSchema = step1Schema.merge(step2Schema)
+
+
+// =================================================================
+// >>> AFFILIATE TRACKING LOGIC <<<
+// =================================================================
+
+const AFFILIATE_ID_STORAGE_KEY = 'affiliateId';
+
+const getAffiliateId = () => {
+  // Retrieves the stored affiliate ID, defaults to null if not found.
+  return localStorage.getItem(AFFILIATE_ID_STORAGE_KEY) || null; 
+};
+
+const initializeAffiliateTracking = () => {
+  // Reads 'am_id' from URL and saves it to Local Storage.
+  const urlParams = new URLSearchParams(window.location.search);
+  const amIdFromUrl = urlParams.get('am_id');
+
+  if (amIdFromUrl) {
+    localStorage.setItem(AFFILIATE_ID_STORAGE_KEY, amIdFromUrl);
+  }
+};
+// =================================================================
+
 
 export default function CheckoutForm({ pricing, subscriptionType, isSubmitting, setIsSubmitting }) {
-  const [currentStep, setCurrentStep] = useState(1);
-  const [paymentElementReady, setPaymentElementReady] = useState(false);
-  const [formError, setFormError] = useState('');
-  const [step1Data, setStep1Data] = useState(null);
-  const [showPassword, setShowPassword] = useState(false);
-  const [passwordStrength, setPasswordStrength] = useState({ checks: [], passedCount: 0, isValid: false });
-  const [emailValidation, setEmailValidation] = useState({ status: 'idle', result: null, message: '' });
-  const [isValidatingEmail, setIsValidatingEmail] = useState(false);
-  const [phoneValidation, setPhoneValidation] = useState({ status: 'idle', result: null, message: '' });
-  const [isValidatingPhone, setIsValidatingPhone] = useState(false);
+  const [currentStep, setCurrentStep] = useState(1)
+  const [paymentElementReady, setPaymentElementReady] = useState(false)
+  const [formError, setFormError] = useState('')
+  const [step1Data, setStep1Data] = useState(null)
+  const [showPassword, setShowPassword] = useState(false)
+  const [passwordStrength, setPasswordStrength] = useState({ checks: [], passedCount: 0, isValid: false })
+  const [emailValidation, setEmailValidation] = useState({ status: 'idle', result: null, message: '' })
+  const [isValidatingEmail, setIsValidatingEmail] = useState(false)
+  const [phoneValidation, setPhoneValidation] = useState({ status: 'idle', result: null, message: '' })
+  const [isValidatingPhone, setIsValidatingPhone] = useState(false)
   
-  const stripe = useStripe();
-  const elements = useElements();
+  const stripe = useStripe()
+  const elements = useElements()
 
+  // Step 1 form
   const step1Form = useForm({
     resolver: zodResolver(step1Schema),
     mode: 'onChange',
-    defaultValues: { firstName: '', lastName: '', email: '', phone: '', password: '' }
-  });
+    defaultValues: {
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
+      password: ''
+    }
+  })
 
+  // Step 2 form
   const step2Form = useForm({
     resolver: zodResolver(step2Schema),
     mode: 'onChange',
-    defaultValues: { terms: false }
-  });
-
-  const watchedPassword = step1Form.watch('password');
-
-  // Initialization: Tracking & Password Strength
-  useEffect(() => {
-    // 1. Initialize Affiliate ID tracking on mount
-    initializeAffiliateTracking();
-  }, []); 
-
-  useEffect(() => {
-    // 2. Update password strength when password changes
-    if (watchedPassword) {
-      setPasswordStrength(validatePasswordStrength(watchedPassword));
-    } else {
-      setPasswordStrength({ checks: [], passedCount: 0, isValid: false });
+    defaultValues: {
+      terms: false
     }
-  }, [watchedPassword]);
+  })
 
-  // Utility functions
+  const watchedPassword = step1Form.watch('password')
+
+  // Affiliate Tracking: Read ID from URL and store in Local Storage on load
+  useEffect(() => {
+    initializeAffiliateTracking(); 
+  }, []); // Run only once on component mount
+
+  // Update password strength when password changes
+  useEffect(() => {
+    if (watchedPassword) {
+      setPasswordStrength(validatePasswordStrength(watchedPassword))
+    } else {
+      setPasswordStrength({ checks: [], passedCount: 0, isValid: false })
+    }
+  }, [watchedPassword])
+
   const showError = (message) => {
-    setFormError(message);
-    toast.error(message);
-  };
+    setFormError(message)
+    toast.error(message)
+  }
 
   const clearError = () => {
-    setFormError('');
-  };
+    setFormError('')
+  }
 
-  // Email/Phone Validation Logic (No changes needed here, keeping your original logic)
-  const validateEmail = async (email) => { /* ... existing logic ... */ return true; };
-  const validatePhone = async (phone) => { /* ... existing logic ... */ return true; };
 
+
+  // Validate email with Mailgun API
+  const validateEmail = async (email) => {
+    if (!email) {
+      setEmailValidation({ status: 'idle', result: null, message: '' })
+      return false
+    }
+
+    setIsValidatingEmail(true)
+    setEmailValidation({ status: 'validating', result: null, message: 'Validating email...' })
+
+    try {
+      const result = await emailValidator.validateWithAPI(email, { immediate: true })
+      const formatted = emailValidator.formatResult(result)
+      
+      setEmailValidation({
+        status: result.isValid ? 'valid' : 'invalid',
+        result,
+        message: formatted.message,
+        suggestion: formatted.suggestion
+      })
+      
+      setIsValidatingEmail(false)
+      return result.isValid
+    } catch (error) {
+      console.error('Email validation error:', error)
+      setEmailValidation({
+        status: 'error',
+        result: null,
+        message: 'Unable to validate email. Please try again.'
+      })
+      setIsValidatingEmail(false)
+      return false
+    }
+  }
+
+  // Validate phone with Twilio API
+  const validatePhone = async (phone) => {
+    if (!phone) {
+      setPhoneValidation({ status: 'idle', result: null, message: '' })
+      return false
+    }
+
+    setIsValidatingPhone(true)
+    setPhoneValidation({ status: 'validating', result: null, message: 'Validating phone number...' })
+
+    try {
+      const result = await phoneValidator.validateWithAPI(phone, { immediate: true })
+      const formatted = phoneValidator.formatResult(result)
+      
+      setPhoneValidation({
+        status: result.isValid ? (result.isMobile !== false ? 'valid' : 'invalid') : 'invalid',
+        result,
+        message: formatted.message
+      })
+      
+      setIsValidatingPhone(false)
+      return result.isValid && result.isMobile !== false
+    } catch (error) {
+      console.error('Phone validation error:', error)
+      setPhoneValidation({
+        status: 'error',
+        result: null,
+        message: 'Unable to validate phone number. Please try again.'
+      })
+      setIsValidatingPhone(false)
+      return false
+    }
+  }
 
   // Handle step 1 submission (Next button)
   const handleStep1Submit = async (data) => {
-    clearError();
+    clearError()
     
     // Validate email before proceeding
-    const isEmailValid = await validateEmail(data.email);
-    if (!isEmailValid) { showError('Please enter a valid email address to continue'); return; }
+    const isEmailValid = await validateEmail(data.email)
+    
+    if (!isEmailValid) {
+      showError('Please enter a valid email address to continue')
+      return
+    }
 
     // Validate phone before proceeding
-    const isPhoneValid = await validatePhone(data.phone);
-    if (!isPhoneValid) { showError('Please enter a valid mobile phone number to continue'); return; }
+    const isPhoneValid = await validatePhone(data.phone)
     
-    // Check for high-risk emails (Keeping your original checks)
-    if (emailValidation.result?.isDisposable || emailValidation.result?.result === 'undeliverable' || emailValidation.result?.result === 'do_not_send') {
-      showError('Please use a deliverable, non-disposable email address.');
-      return;
+    if (!isPhoneValid) {
+      showError('Please enter a valid mobile phone number to continue')
+      return
     }
     
-    setStep1Data(data);
-    setCurrentStep(2);
-  };
+    // Check for high-risk emails
+    if (emailValidation.result?.isDisposable) {
+      showError('Disposable email addresses are not allowed')
+      return
+    }
+    
+    if (emailValidation.result?.result === 'undeliverable') {
+      showError('This email address cannot receive emails. Please use a different email.')
+      return
+    }
+    
+    if (emailValidation.result?.result === 'do_not_send') {
+      showError('This email address is on a do-not-send list. Please use a different email.')
+      return
+    }
+    
+    setStep1Data(data)
+    setCurrentStep(2)
+  }
 
   // Handle going back to step 1
   const goBackToStep1 = () => {
-    setCurrentStep(1);
-    clearError();
-  };
+    setCurrentStep(1)
+    clearError()
+  }
 
-  // Stripe Error Handler (No changes needed here, keeping your original comprehensive logic)
-  const handleStripeError = (error) => { /* ... existing logic ... */ return false; };
-  
+  // Better Stripe error handling
+  const handleStripeError = (error) => {
+    console.error('Stripe error:', error)
+    
+    let userMessage = ''
+    
+    switch (error.code) {
+      case 'card_declined':
+        if (error.decline_code === 'insufficient_funds') {
+          userMessage = 'Your card was declined due to insufficient funds. Please try a different payment method.'
+        } else if (error.decline_code === 'lost_card' || error.decline_code === 'stolen_card') {
+          userMessage = 'Your card was declined. Please contact your bank or try a different payment method.'
+        } else if (error.decline_code === 'expired_card') {
+          userMessage = 'Your card has expired. Please use a different payment method.'
+        } else if (error.decline_code === 'incorrect_cvc') {
+          userMessage = 'The security code (CVC) you entered is incorrect. Please check and try again.'
+        } else if (error.decline_code === 'incorrect_number') {
+          userMessage = 'The card number you entered is incorrect. Please check and try again.'
+        } else if (error.decline_code === 'generic_decline') {
+          userMessage = 'This card cannot be used for subscriptions. Please try a different payment method.'
+        } else {
+          userMessage = 'Your card was declined. Please try a different payment method or contact your bank.'
+        }
+        break
+        
+      case 'incorrect_number':
+      case 'invalid_number':
+        userMessage = 'The card number you entered is invalid. Please check the number and try again.'
+        break
+        
+      case 'invalid_expiry_month':
+      case 'invalid_expiry_year':
+        userMessage = 'The expiration date you entered is invalid. Please check and try again.'
+        break
+        
+      case 'invalid_cvc':
+      case 'incorrect_cvc':
+        userMessage = 'The security code (CVC) you entered is invalid. Please check and try again.'
+        break
+        
+      case 'expired_card':
+        userMessage = 'Your card has expired. Please use a different payment method.'
+        break
+        
+      case 'processing_error':
+        userMessage = 'There was an error processing your payment. Please try again in a few moments.'
+        break
+        
+      case 'rate_limit':
+        userMessage = 'Too many payment attempts. Please wait a moment before trying again.'
+        break
+        
+      case 'authentication_required':
+        userMessage = 'Your bank requires additional authentication. Please complete the verification process.'
+        break
+
+      case 'card_not_supported':
+        userMessage = 'This type of card is not supported. Please use a different payment method.'
+        break
+
+      case 'testmode_charges_only':
+        userMessage = 'Test cards cannot be used. Please use a real payment method.'
+        break
+        
+      default:
+        userMessage = error.message || 'An error occurred while processing your payment. Please try again.'
+        break
+    }
+    
+    showError(userMessage)
+    return false
+  }
+
   // Handle final form submission (Step 2)
   const onFinalSubmit = async (step2Data) => {
     if (!stripe || !elements || !step1Data) {
-      showError('Payment system not loaded. Please refresh the page.');
-      return;
+      showError('Payment system not loaded. Please refresh the page.')
+      return
     }
 
-    if (isSubmitting) return;
+    if (isSubmitting) return
 
-    const combinedData = { ...step1Data, ...step2Data };
-    // Get the reliably stored affiliate ID (will now prioritize URL query parameter)
-    const affiliateId = getAffiliateId(); 
+    const combinedData = { ...step1Data, ...step2Data }
+
+    // --- NEW LOGIC FOR AFFILIATE ID AND PHONE FORMAT (Fixes 400 error) ---
+    // 1. Format phone number to E.164 (retains '+' and digits, removes other characters)
+    //    This is crucial to fix the 400 Bad Request error from Stripe
+    const formattedPhone = combinedData.phone.replace(/[^\d+]/g, ''); 
+    
+    // 2. Retrieve affiliate ID from Local Storage
+    const affiliateId = getAffiliateId();
+    // --------------------------------------------------------------------
 
     try {
-      setIsSubmitting(true);
-      clearError();
+      setIsSubmitting(true)
+      clearError()
       
-      // Configure API URL
+      // Step 1: Create customer first
       const API_BASE_URL = process.env.NODE_ENV === 'production' 
         ? 'https://cc360-checkout-v2-production.up.railway.app'
         : 'http://localhost:3001';
       
-      // Step 1: Create customer
       const customerResponse = await fetch(`${API_BASE_URL}/api/billing/create-customer`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: combinedData.email,
           name: `${combinedData.firstName} ${combinedData.lastName}`,
-          phone: combinedData.phone.replace(/\D/g, ''),
-          affiliateId: affiliateId, // SENDING the reliable affiliate ID
+          phone: formattedPhone, // FIXED: Use formatted phone
           metadata: {
             subscription_type: subscriptionType,
             trial_signup: new Date().toISOString()
-          }
+          },
+          affiliateId: affiliateId // NEW: Send affiliate ID (camelCase)
         })
-      });
+      })
 
       if (!customerResponse.ok) {
-        const errorData = await customerResponse.json();
-        throw new Error(errorData.error || 'Failed to create customer account. Please try again.');
+        const errorData = await customerResponse.json()
+        throw new Error(errorData.error || 'Failed to create customer account. Please try again.')
       }
 
-      const { customerId } = await customerResponse.json();
+      const { customerId } = await customerResponse.json()
 
-      // Step 2: Create SetupIntent
+      // Step 2: Create SetupIntent for card validation
       const setupResponse = await fetch(`${API_BASE_URL}/api/billing/create-setup-intent`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ customerId: customerId })
-      });
+        body: JSON.stringify({
+          customerId: customerId
+        })
+      })
 
       if (!setupResponse.ok) {
-        const errorData = await setupResponse.json();
-        throw new Error(errorData.error || 'Failed to setup payment method. Please try again.');
+        const errorData = await setupResponse.json()
+        throw new Error(errorData.error || 'Failed to setup payment method. Please try again.')
       }
 
-      const { clientSecret } = await setupResponse.json();
+      const { clientSecret } = await setupResponse.json()
 
-      // Step 3 & 4: Submit elements and Confirm setup intent
-      const { error: submitError } = await elements.submit();
-      if (submitError) { handleStripeError(submitError); return; }
+      // Step 3: Submit the elements form first (required by Stripe)
+      const { error: submitError } = await elements.submit()
+      
+      if (submitError) {
+        handleStripeError(submitError)
+        return
+      }
 
+      // Step 4: Confirm setup intent to validate card
       const { setupIntent, error: setupError } = await stripe.confirmSetup({
         elements,
         clientSecret,
@@ -283,18 +425,22 @@ export default function CheckoutForm({ pricing, subscriptionType, isSubmitting, 
             billing_details: {
               name: `${combinedData.firstName} ${combinedData.lastName}`,
               email: combinedData.email,
-              phone: combinedData.phone.replace(/\D/g, '')
+              phone: formattedPhone // FIXED: Use formatted phone
             }
           }
         },
         redirect: 'if_required'
-      });
+      })
 
-      // Step 5: Handle setup errors
-      if (setupError) { handleStripeError(setupError); return; }
+      // Step 5: Handle setup errors (card validation failures)
+      if (setupError) {
+        handleStripeError(setupError)
+        return
+      }
+
       if (!setupIntent || setupIntent.status !== 'succeeded') {
-        showError('Card validation failed. Please try a different payment method.');
-        return;
+        showError('Card validation failed. Please try a different payment method.')
+        return
       }
 
       // Step 6: Start 30-day trial subscription
@@ -305,25 +451,25 @@ export default function CheckoutForm({ pricing, subscriptionType, isSubmitting, 
           customerId: customerId,
           paymentMethodId: setupIntent.payment_method,
           priceId: pricing.priceId,
-          affiliateId: affiliateId, // SENDING the reliable affiliate ID
           userInfo: {
             firstName: combinedData.firstName,
             lastName: combinedData.lastName,
             email: combinedData.email,
-            phone: combinedData.phone.replace(/\D/g, '')
-          }
+            phone: formattedPhone // FIXED: Use formatted phone
+          },
+          affiliateId: affiliateId, // NEW: Send affiliate ID (camelCase) for GHL tracking
         })
-      });
+      })
 
       if (!trialResponse.ok) {
-        const errorData = await trialResponse.json();
-        throw new Error(errorData.error || 'Failed to start trial. Please contact support.');
+        const errorData = await trialResponse.json()
+        throw new Error(errorData.error || 'Failed to start trial. Please contact support.')
       }
 
-      const { subscriptionId, status } = await trialResponse.json();
+      const { subscriptionId, status } = await trialResponse.json()
 
-      // Step 7: Success - redirect to onboarding (using your existing logic)
-      const successUrl = 'https://link.coursecreator360.com/widget/bookings/cc360/onboarding';
+      // Step 7: Success - redirect to onboarding
+      const successUrl = 'https://link.coursecreator360.com/widget/bookings/cc360/onboarding'
       const params = new URLSearchParams({
         subscription_id: subscriptionId,
         customer_id: customerId,
@@ -332,28 +478,33 @@ export default function CheckoutForm({ pricing, subscriptionType, isSubmitting, 
         email: combinedData.email,
         firstName: combinedData.firstName,
         lastName: combinedData.lastName,
-        phone: combinedData.phone.replace(/\D/g, ''),
+        phone: formattedPhone, // Ensure E.164 phone is passed to URL
         trial_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-      });
+      })
 
-      toast.success('🎉 Trial started! Redirecting to your dashboard...');
+      // Show success message before redirect
+      toast.success('🎉 Trial started! Redirecting to your dashboard...')
       
+      // Redirect to onboarding
       setTimeout(() => {
-        window.location.href = `${successUrl}?${params.toString()}`;
-      }, 1500);
+        window.location.href = `${successUrl}?${params.toString()}`
+      }, 1500)
 
     } catch (error) {
-      console.error('Trial signup error:', error);
-      showError(error.message || 'An unexpected error occurred. Please try again.');
+      console.error('Trial signup error:', error)
+      showError(error.message || 'An unexpected error occurred. Please try again.')
     } finally {
-      setIsSubmitting(false);
+      setIsSubmitting(false)
     }
-  };
+  }
 
-  // Component structure (JSX)
   return (
     <div className="card mt-0 mb-8 lg:my-20 animate-fade-in">
       <div className="card-body space-y-6">
+      
+        {/* ... (Rest of the JSX is the same) ... */}
+        {/* This part of the code is the same as the user's original file, omitted for brevity. */}
+
         {/* Header */}
         <div className="text-center">
           <h2 className="text-2xl font-bold mb-2" style={{ color: '#111D2C' }}>
@@ -364,7 +515,7 @@ export default function CheckoutForm({ pricing, subscriptionType, isSubmitting, 
           </p>
         </div>
 
-        {/* Progress indicator (Your original design) */}
+        {/* Progress indicator */}
         <div className="mb-6">
           <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
             <span>Step {currentStep} of 2</span>
@@ -381,7 +532,7 @@ export default function CheckoutForm({ pricing, subscriptionType, isSubmitting, 
           </div>
         </div>
 
-        {/* Form Error Display (Your original design) */}
+        {/* Form Error Display */}
         {formError && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start space-x-3">
             <ExclamationCircleIcon className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
@@ -398,11 +549,10 @@ export default function CheckoutForm({ pricing, subscriptionType, isSubmitting, 
           </div>
         )}
 
-        {/* Step 1: Personal Information (Your original form fields) */}
+        {/* Step 1: Personal Information */}
         {currentStep === 1 && (
           <form onSubmit={step1Form.handleSubmit(handleStep1Submit)} className="space-y-6">
-            
-            {/* First and Last Name */}
+            {/* First and Last Name on same row */}
             <div className="grid grid-cols-1 gap-4 sm:gap-6 sm:grid-cols-2">
               <FormField
                 label="First Name"
@@ -453,8 +603,12 @@ export default function CheckoutForm({ pricing, subscriptionType, isSubmitting, 
               </FormField>
             </div>
 
-            {/* Email (Your original validation UI) */}
-            <FormField label="Email" required error={step1Form.formState.errors.email?.message}>
+            {/* Email */}
+            <FormField
+              label="Email"
+              required
+              error={step1Form.formState.errors.email?.message}
+            >
               <Controller
                 name="email"
                 control={step1Form.control}
@@ -466,9 +620,9 @@ export default function CheckoutForm({ pricing, subscriptionType, isSubmitting, 
                       autoComplete="email"
                       placeholder="you@example.com"
                       onBlur={(e) => {
-                        field.onBlur(e);
+                        field.onBlur(e)
                         if (e.target.value && !step1Form.formState.errors.email) {
-                          validateEmail(e.target.value);
+                          validateEmail(e.target.value)
                         }
                       }}
                       className={cn(
@@ -478,15 +632,69 @@ export default function CheckoutForm({ pricing, subscriptionType, isSubmitting, 
                         emailValidation.status === 'valid' && !step1Form.formState.errors.email && 'success'
                       )}
                     />
-                    {/* ... Email validation indicators and messages (omitted for brevity but kept in your code) */}
+                    {/* Email validation indicator */}
+                    {isValidatingEmail && (
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                        <div className="w-4 h-4 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
+                      </div>
+                    )}
+                    {emailValidation.status === 'valid' && !isValidatingEmail && (
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                        <CheckCircleIcon className="h-5 w-5 text-green-500" />
+                      </div>
+                    )}
+                    {emailValidation.status === 'invalid' && !isValidatingEmail && (
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                        <ExclamationCircleIcon className="h-5 w-5 text-red-500" />
+                      </div>
+                    )}
                   </div>
                 )}
               />
-              {/* ... Email validation message and suggestion logic (omitted for brevity but kept in your code) */}
+              
+              {/* Email validation message */}
+              {emailValidation.message && emailValidation.status !== 'idle' && (
+                <div className={cn(
+                  'mt-2 text-sm flex items-start space-x-2',
+                  emailValidation.status === 'valid' && 'text-green-600',
+                  emailValidation.status === 'invalid' && 'text-red-600',
+                  emailValidation.status === 'validating' && 'text-blue-600',
+                  emailValidation.status === 'error' && 'text-red-600'
+                )}>
+                  {emailValidation.status === 'validating' && (
+                    <div className="w-4 h-4 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin mt-0.5 flex-shrink-0"></div>
+                  )}
+                  {emailValidation.status === 'valid' && (
+                    <CheckCircleIcon className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                  )}
+                  {(emailValidation.status === 'invalid' || emailValidation.status === 'error') && (
+                    <ExclamationCircleIcon className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
+                  )}
+                  <span>{emailValidation.message}</span>
+                </div>
+              )}
+              
+              {/* Email suggestion */}
+              {emailValidation.suggestion && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    step1Form.setValue('email', emailValidation.suggestion)
+                    validateEmail(emailValidation.suggestion)
+                  }}
+                  className="mt-1 text-sm text-blue-600 hover:text-blue-800 underline"
+                >
+                  Use {emailValidation.suggestion} instead?
+                </button>
+              )}
             </FormField>
 
-            {/* Phone (Your original validation UI) */}
-            <FormField label="Phone Number" required error={step1Form.formState.errors.phone?.message}>
+            {/* Phone */}
+            <FormField
+              label="Phone Number"
+              required
+              error={step1Form.formState.errors.phone?.message}
+            >
               <div className="relative">
                 <Controller
                   name="phone"
@@ -495,9 +703,10 @@ export default function CheckoutForm({ pricing, subscriptionType, isSubmitting, 
                     <PhoneInput
                       value={field.value}
                       onChange={(value) => {
-                        field.onChange(value);
+                        field.onChange(value)
+                        // Trigger validation after user stops typing
                         if (value && value.length > 8) {
-                          setTimeout(() => validatePhone(value), 500);
+                          setTimeout(() => validatePhone(value), 500)
                         }
                       }}
                       error={step1Form.formState.errors.phone}
@@ -511,12 +720,39 @@ export default function CheckoutForm({ pricing, subscriptionType, isSubmitting, 
                     />
                   )}
                 />
-                {/* ... Phone validation status icon and messages (omitted for brevity but kept in your code) */}
+                
+                {/* Phone validation status icon */}
+                <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                  {isValidatingPhone ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                  ) : phoneValidation.status === 'valid' ? (
+                    <CheckCircleIcon className="h-4 w-4 text-green-500" />
+                  ) : phoneValidation.status === 'invalid' ? (
+                    <ExclamationCircleIcon className="h-4 w-4 text-red-500" />
+                  ) : null}
+                </div>
               </div>
+              
+              {/* Phone validation message */}
+              {phoneValidation.message && (
+                <p className={cn(
+                  'text-sm mt-1',
+                  phoneValidation.status === 'valid' && 'text-green-600',
+                  phoneValidation.status === 'invalid' && 'text-red-600',
+                  phoneValidation.status === 'validating' && 'text-blue-600',
+                  phoneValidation.status === 'error' && 'text-red-600'
+                )}>
+                  {phoneValidation.message}
+                </p>
+              )}
             </FormField>
 
-            {/* Password (Your original password strength UI) */}
-            <FormField label="Create Password" required error={step1Form.formState.errors.password?.message}>
+            {/* Password */}
+            <FormField
+              label="Create Password"
+              required
+              error={step1Form.formState.errors.password?.message}
+            >
               <div className="relative">
                 <Controller
                   name="password"
@@ -556,7 +792,7 @@ export default function CheckoutForm({ pricing, subscriptionType, isSubmitting, 
               )}
             </FormField>
 
-            {/* Next Button (Your original design and logic) */}
+            {/* Next Button */}
             <button
               type="submit"
               disabled={
@@ -571,18 +807,32 @@ export default function CheckoutForm({ pricing, subscriptionType, isSubmitting, 
               }
               className={cn(
                 'w-full flex items-center justify-center rounded-lg px-4 py-4 text-base font-semibold shadow-sm transition-all duration-200',
-                // ... (your styling logic)
+                'focus:ring-2 focus:ring-offset-2',
+                (step1Form.formState.isValid && passwordStrength.isValid && !isValidatingEmail && !isValidatingPhone && emailValidation.status !== 'invalid' && emailValidation.status !== 'error' && phoneValidation.status !== 'invalid' && phoneValidation.status !== 'error')
+                  ? 'text-white hover:transform hover:scale-[1.02] active:scale-[0.98]'
+                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
               )}
               style={{
                 backgroundColor: (step1Form.formState.isValid && passwordStrength.isValid && !isValidatingEmail && !isValidatingPhone && emailValidation.status !== 'invalid' && emailValidation.status !== 'error' && phoneValidation.status !== 'invalid' && phoneValidation.status !== 'error') ? '#0475FF' : undefined,
                 focusRingColor: '#0475FF'
               }}
             >
-              {/* ... Button text and loading indicators (omitted for brevity but kept in your code) */}
-              Next
+              {isValidatingEmail ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-gray-300 border-t-white rounded-full animate-spin mr-2"></div>
+                  Validating Email...
+                </>
+              ) : isValidatingPhone ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-gray-300 border-t-white rounded-full animate-spin mr-2"></div>
+                  Validating Phone...
+                </>
+              ) : (
+                'Next'
+              )}
             </button>
 
-            {/* Terms preview (Your original links) */}
+            {/* Terms preview */}
             <p className="text-center text-sm text-gray-500">
               By continuing, you agree to our{' '}
               <a href="#" className="underline hover:no-underline" style={{ color: '#0475FF' }}>
@@ -596,7 +846,7 @@ export default function CheckoutForm({ pricing, subscriptionType, isSubmitting, 
           </form>
         )}
 
-        {/* Step 2: Payment Method (Your original design) */}
+        {/* Step 2: Payment Method */}
         {currentStep === 2 && (
           <form onSubmit={step2Form.handleSubmit(onFinalSubmit)} className="space-y-6">
             {/* Back button */}
@@ -676,21 +926,33 @@ export default function CheckoutForm({ pricing, subscriptionType, isSubmitting, 
               />
             </FormField>
 
-            {/* Submit button (Your original design and logic) */}
+            {/* Submit button */}
             <button
               type="submit"
               disabled={!step2Form.formState.isValid || !paymentElementReady || isSubmitting}
               className={cn(
                 'w-full flex items-center justify-center rounded-lg px-4 py-4 text-base font-semibold shadow-sm transition-all duration-200',
-                // ... (your styling logic)
+                'focus:ring-2 focus:ring-offset-2',
+                (step2Form.formState.isValid && paymentElementReady && !isSubmitting)
+                  ? 'text-white hover:transform hover:scale-[1.02] active:scale-[0.98]'
+                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
               )}
               style={{
                 backgroundColor: (step2Form.formState.isValid && paymentElementReady && !isSubmitting) ? '#0475FF' : undefined,
                 focusRingColor: '#0475FF'
               }}
             >
-              {/* ... Button text and loading indicators (omitted for brevity but kept in your code) */}
-              Start Trial
+              {isSubmitting ? (
+                <>
+                  <div className="spinner h-5 w-5 mr-2" />
+                  Validating Card & Starting Trial...
+                </>
+              ) : (
+                <>
+                  <CreditCardIcon className="h-5 w-5 mr-2" />
+                  Start Trial
+                </>
+              )}
             </button>
           </form>
         )}
@@ -705,5 +967,5 @@ export default function CheckoutForm({ pricing, subscriptionType, isSubmitting, 
         </div>
       </div>
     </div>
-  );
+  )
 }
