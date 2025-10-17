@@ -9,7 +9,7 @@ const stripe = new Stripe(process.env.JI_UPWORK_STRIPE_API, {
 
 // GHL API Key and the new dedicated Renewal Webhook URL, named consistently
 const GHL_API_KEY = process.env.JI_GHL_API;
-const GHL_RENEWAL_WEBHOOK_URL = process.env.JI_UPWORK_GHL_RENEWAL_WEBHOOK_URL; 
+const GHL_RENEWAL_WEBHOOK_URL = process.env.JI_UPWORK_GHL_RENEWAL_WEBHOOK_URL; 
 
 // Required for Vercel to handle the raw body data
 export const config = {
@@ -22,36 +22,36 @@ export const config = {
 // --- GHL TRANSACTION FUNCTION (FOR RENEWALS) ---
 // -----------------------------------------------------------------------
 /**
- * Sends a transaction record to GoHighLevel via a dedicated webhook.
- * This ensures the revenue is logged and commission is tracked using the am_id.
- * @param {object} transactionData - Data including customerId, amount, and affiliateId.
- */
+ * Sends a transaction record to GoHighLevel via a dedicated webhook.
+ * This ensures the revenue is logged and commission is tracked using the am_id.
+ * @param {object} transactionData - Data including customerId, amount, and affiliateId.
+ */
 async function sendRenewalTransactionToGHL(transactionData) {
-    if (!GHL_RENEWAL_WEBHOOK_URL) {
-        console.error("JI_UPWORK_GHL_RENEWAL_WEBHOOK_URL is not set. Cannot record renewal transaction.");
-        return;
-    }
-    
-    console.log("Preparing GHL Renewal Transaction Payload:", transactionData);
+    if (!GHL_RENEWAL_WEBHOOK_URL) {
+        console.error("JI_UPWORK_GHL_RENEWAL_WEBHOOK_URL is not set. Cannot record renewal transaction.");
+        return;
+    }
+    
+    console.log("Preparing GHL Renewal Transaction Payload:", transactionData);
 
-    try {
-        // This hits a dedicated GHL Webhook designed to create an Opportunity/Transaction
-        // and attribute the commission using the am_id.
-        const response = await axios.post(GHL_RENEWAL_WEBHOOK_URL, {
-            // These keys should match what your GHL workflow webhook expects
-            stripeCustomerId: transactionData.customerId,
-            renewalAmount: transactionData.amount,
-            am_id: transactionData.affiliateId, // CRITICAL: This links the commission
-            renewalDate: new Date().toISOString(),
-            status: 'renewal_succeeded',
-        });
+    try {
+        // This hits a dedicated GHL Webhook designed to create an Opportunity/Transaction
+        // and attribute the commission using the am_id.
+        const response = await axios.post(GHL_RENEWAL_WEBHOOK_URL, {
+            // These keys should match what your GHL workflow webhook expects
+            stripeCustomerId: transactionData.customerId,
+            renewalAmount: transactionData.amount,
+            am_id: transactionData.affiliateId, // CRITICAL: This links the commission
+            renewalDate: new Date().toISOString(),
+            status: 'renewal_succeeded',
+        });
 
-        console.log(`GHL Renewal Webhook Response Status: ${response.status}`);
-        console.log("GHL Renewal Transaction successfully recorded.");
-        
-    } catch (error) {
-        console.error("GHL Renewal Webhook failed:", error.response ? error.response.data : error.message);
-    }
+        console.log(`GHL Renewal Webhook Response Status: ${response.status}`);
+        console.log("GHL Renewal Transaction successfully recorded.");
+        
+    } catch (error) {
+        console.error("GHL Renewal Webhook failed:", error.response ? error.response.data : error.message);
+    }
 }
 
 
@@ -78,10 +78,10 @@ async function fetchCustomerAndProcessGHL(customerId, subscriptionId) {
     const email = customer.email || "No email";
     const phone = customer.phone || customer.metadata.phone || "No phone"; 
     
-    // Affiliate ID is stored in metadata as 'affiliate_id'
-    const affiliateId = customer.metadata.affiliate_id || 'none'; 
+    // ✅ KRITIČNA ISPAVKA: Proveravamo 'affiliateId' (camelCase) PRVO, pa 'affiliate_id' (legacy)
+    const affiliateId = customer.metadata.affiliateId || customer.metadata.affiliate_id || 'none'; 
     
-    // Extract names 
+    // Extract names 
     const nameParts = name.split(' ');
     const firstName = customer.metadata.firstName || nameParts[0] || name;
     const lastName = customer.metadata.lastName || (nameParts.length > 1 ? nameParts.slice(1).join(' ') : "");
@@ -174,24 +174,26 @@ export default async function handler(req, res) {
         // Initial Signup: Call the function that guarantees contact creation/update
         const customerId = event.data.object.customer;
         const subscriptionId = event.type === "customer.subscription.created" ? event.data.object.id : null;
-        
+        
         await fetchCustomerAndProcessGHL(customerId, subscriptionId);
         break;
 
       case "invoice.payment_succeeded":
         // === FIX: Handle Subscription Renewal Transaction (Affiliate Commission Tracking) ===
         const invoice = event.data.object;
-        
+        
         // Check if this is a recurring renewal payment
         if (invoice.billing_reason === 'subscription_cycle' && invoice.status === 'paid') {
-            
+            
             const renewalCustomerId = invoice.customer;
             const amount = invoice.amount_paid / 100; // Convert cents to dollars
-            
+            
             // Fetch customer again to retrieve metadata (affiliate_id)
             const customer = await stripe.customers.retrieve(renewalCustomerId);
-            const affiliateId = customer.metadata.affiliate_id; // The stored am_id
-            
+            
+            // ✅ KRITIČNA ISPAVKA: Proveravamo 'affiliateId' (camelCase) PRVO, pa 'affiliate_id' (legacy)
+            const affiliateId = customer.metadata.affiliateId || customer.metadata.affiliate_id; 
+            
             if (!affiliateId) {
                 console.warn(`Renewal processed, but affiliate ID missing for customer ${renewalCustomerId}. Will use 'none'.`);
             }
@@ -204,7 +206,7 @@ export default async function handler(req, res) {
             });
 
             console.log(`Renewal transaction recorded. Amount: $${amount}. AM_ID: ${affiliateId || 'none'}.`);
-            
+            
         } else {
             // Ignore non-renewal payments (e.g., failed payments, one-time fees, etc.)
             console.log("Ignoring non-renewal or unpaid invoice.");
