@@ -78,8 +78,10 @@ async function fetchCustomerAndProcessGHL(customerId, subscriptionId) {
     const email = customer.email || "No email";
     const phone = customer.phone || customer.metadata.phone || "No phone"; 
     
-    // CRITICAL FIX (Already correct): Check 'affiliateId' (camelCase) first, then 'affiliate_id' (legacy/default)
-    const affiliateId = customer.metadata.affiliateId || customer.metadata.affiliate_id || 'none'; 
+    // *******************************************************************************************
+    // IZMENA 1: Dodat customer.metadata.am_id u listu provera za najveću robusnost
+    // *******************************************************************************************
+    const affiliateId = customer.metadata.affiliateId || customer.metadata.affiliate_id || customer.metadata.am_id || 'none'; 
     
     // Extract names 
     const nameParts = name.split(' ');
@@ -191,8 +193,10 @@ export default async function handler(req, res) {
             // Fetch customer again to retrieve metadata (affiliate_id)
             const customer = await stripe.customers.retrieve(renewalCustomerId);
             
-            // CRITICAL FIX: Ensure a default value of 'none' is always applied.
-            const finalAffiliateId = customer.metadata.affiliateId || customer.metadata.affiliate_id || 'none';
+            // *******************************************************************************************
+            // IZMENA 2: Dodat customer.metadata.am_id u listu provera za najveću robusnost
+            // *******************************************************************************************
+            const finalAffiliateId = customer.metadata.affiliateId || customer.metadata.affiliate_id || customer.metadata.am_id || 'none';
             
             if (finalAffiliateId === 'none') {
                 console.warn(`Renewal processed, but affiliate ID missing for customer ${renewalCustomerId}. Will use 'none'.`);
