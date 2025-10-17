@@ -24,7 +24,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Customer ID is required' });
     }
 
-    // Create SetupIntent for validating and saving the payment method
+    // Create SetupIntent for validating and saving the payment Method
     const setupIntent = await stripe.setupIntents.create({
       customer: customerId,
       automatic_payment_methods: { enabled: true },

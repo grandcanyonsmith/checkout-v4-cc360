@@ -100,7 +100,7 @@ export default async function handler(req, res) {
       console.error('GHL API error:', ghlError);
     }
 
-    // Log subscription creation
+    // Log subscription Creation
     console.log(`Trial subscription created for ${userMetadata.email}, affiliate: ${userMetadata.affiliateId}`);
 
     res.json({

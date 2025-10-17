@@ -18,7 +18,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Read customer and tracking data from the request body
+    // Read customer and tracking data from the request Body
     const { email, name, phone, zipCode, metadata, affiliateId } = req.body;
 
     // Validate required fields

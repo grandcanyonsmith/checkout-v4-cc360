@@ -28,7 +28,7 @@ import PhoneInput from './PhoneInput';
 // =================================================================================
 
 const AFFILIATE_ID_QUERY_KEY = 'am_id'; 
-const AFFILIATE_ID_STORAGE_KEY = 'affiliateId'; // Internal key
+const AFFILIATE_ID_STORAGE_KEY = 'affiliateId'; // Internal Key
 
 /**
  * Retrieves the stored affiliate ID, defaulting to 'none' if not found.

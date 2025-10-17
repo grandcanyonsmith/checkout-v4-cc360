@@ -7,7 +7,7 @@ const stripe = new Stripe(process.env.JI_UPWORK_STRIPE_API, {
   apiVersion: "2023-10-16",
 });
 
-// GHL API Key and the new dedicated Renewal Webhook URL, named consistently
+// GHL API Key and the new dedicated Renewal Webhook URL, Named consistently
 const GHL_API_KEY = process.env.JI_GHL_API;
 const GHL_RENEWAL_WEBHOOK_URL = process.env.JI_UPWORK_GHL_RENEWAL_WEBHOOK_URL; 
 
