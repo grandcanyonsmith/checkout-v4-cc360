@@ -20,6 +20,10 @@ inject()
 // FIX: Initialize affiliate tracking globally before rendering
 initializeAffiliateTracking() 
 
+// VERCEL FIX: Bypass Secret is required to access Vercel Serverless Functions 
+// when Deployment Protection is enabled on Preview environments.
+const VERCEL_BYPASS_SECRET = 'e3b0c44298fc1c149afbf4c8996fb924';
+
 // Course Creator 360 Pricing Configuration
 const CC360_PRICING = {
   monthly: {
@@ -69,15 +73,20 @@ function App() {
       try {
         setLoadingError(null); 
         
+        // Header to bypass Vercel Deployment Protection in Preview environments
+        const bypassHeader = { 'x-vercel-protection-bypass': VERCEL_BYPASS_SECRET };
+
         // This calls your NEW backend route (Create-setup-intent-on-load.js)
         const response = await fetch(`${API_BASE_URL}/api/billing/create-setup-intent-on-load`, { 
             method: 'POST', 
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                ...bypassHeader // Adding the bypass header
+            },
             body: JSON.stringify({ priceId: currentPricing.priceId }) 
         })
 
         if (!response.ok) {
-          // Attempt to read server error details if available
           const errorData = await response.json().catch(() => ({}));
           const errorMsg = errorData.error || 'Server returned an error when fetching setup secret.';
           throw new Error(errorMsg);
@@ -93,7 +102,6 @@ function App() {
 
       } catch (error) {
         console.error('Error fetching client secret:', error)
-        // Display the technical error detail to the user
         setLoadingError(error.message || 'Failed to connect to billing server.')
       }
     }
