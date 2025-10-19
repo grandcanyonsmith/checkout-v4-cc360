@@ -21,7 +21,7 @@ import phoneValidator from '../utils/phoneValidation'
 import FormField from './FormField'
 import PasswordStrength from './PasswordStrength'
 import PhoneInput from './PhoneInput'
-// AFFILIATE TRACKING FIX: Import function to read ID from the utility file
+// FIX: Import function to read ID from the utility file
 import { getAffiliateId } from '../utils/affiliateTracking' 
 
 // Step 1 validation schema (personal info)
@@ -65,12 +65,6 @@ const step2Schema = z.object({
 
 // Combined schema for final submission
 const fullSchema = step1Schema.merge(step2Schema)
-
-// =================================================================
-// NOTE: Affiliate tracking logic (getAffiliateId and initializeAffiliateTracking) 
-// has been moved to '../utils/affiliateTracking' and is initialized globally in App.jsx.
-// =================================================================
-
 
 export default function CheckoutForm({ pricing, subscriptionType, isSubmitting, setIsSubmitting }) {
   const [currentStep, setCurrentStep] = useState(1)
@@ -131,7 +125,7 @@ export default function CheckoutForm({ pricing, subscriptionType, isSubmitting, 
 
 
 
-  // Validate email with Mailgun API
+  // Validate email with Mailgun API (assuming utility exists)
   const validateEmail = async (email) => {
     if (!email) {
       setEmailValidation({ status: 'idle', result: null, message: '' })
@@ -166,7 +160,7 @@ export default function CheckoutForm({ pricing, subscriptionType, isSubmitting, 
     }
   }
 
-  // Validate phone with Twilio API
+  // Validate phone with Twilio API (assuming utility exists)
   const validatePhone = async (phone) => {
     if (!phone) {
       setPhoneValidation({ status: 'idle', result: null, message: '' })
@@ -371,6 +365,7 @@ export default function CheckoutForm({ pricing, subscriptionType, isSubmitting, 
       const { customerId } = await customerResponse.json()
 
       // Step 2: Create SetupIntent for card validation
+      // NOTE: This intent is specific to the customer and is DIFFERENT from the one fetched on load.
       const setupResponse = await fetch(`${API_BASE_URL}/api/billing/create-setup-intent`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -606,305 +601,170 @@ export default function CheckoutForm({ pricing, subscriptionType, isSubmitting, 
                         'form-input text-base pr-10',
                         step1Form.formState.errors.email && 'error',
                         emailValidation.status === 'invalid' && 'error',
-                        emailValidation.status === 'valid' && !step1Form.formState.errors.email && 'success'
+                        emailValidation.status === 'valid' && 'success'
                       )}
                     />
-                    {/* Email validation indicator */}
-                    {isValidatingEmail && (
-                      <div className="absolute inset-y-0 right-0 flex items-center pr-3">
-                        <div className="w-4 h-4 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin"></div>
-                      </div>
-                    )}
-                    {emailValidation.status === 'valid' && !isValidatingEmail && (
-                      <div className="absolute inset-y-0 right-0 flex items-center pr-3">
-                        <CheckCircleIcon className="h-5 w-5 text-green-500" />
-                      </div>
-                    )}
-                    {emailValidation.status === 'invalid' && !isValidatingEmail && (
-                      <div className="absolute inset-y-0 right-0 flex items-center pr-3">
-                        <ExclamationCircleIcon className="h-5 w-5 text-red-500" />
-                      </div>
-                    )}
+                    {isValidatingEmail && <div className="spinner-sm absolute right-3 top-1/2 -translate-y-1/2"></div>}
+                    {emailValidation.status === 'valid' && !isValidatingEmail && <CheckCircleIcon className="h-5 w-5 text-green-500 absolute right-3 top-1/2 -translate-y-1/2" />}
+                    {emailValidation.status === 'invalid' && !isValidatingEmail && <ExclamationCircleIcon className="h-5 w-5 text-red-500 absolute right-3 top-1/2 -translate-y-1/2" />}
                   </div>
                 )}
               />
-              
-              {/* Email validation message */}
-              {emailValidation.message && emailValidation.status !== 'idle' && (
-                <div className={cn(
-                  'mt-2 text-sm flex items-start space-x-2',
-                  emailValidation.status === 'valid' && 'text-green-600',
-                  emailValidation.status === 'invalid' && 'text-red-600',
-                  emailValidation.status === 'validating' && 'text-blue-600',
-                  emailValidation.status === 'error' && 'text-red-600'
-                )}>
-                  {emailValidation.status === 'validating' && (
-                    <div className="w-4 h-4 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin mt-0.5 flex-shrink-0"></div>
-                  )}
-                  {emailValidation.status === 'valid' && (
-                    <CheckCircleIcon className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                  )}
-                  {(emailValidation.status === 'invalid' || emailValidation.status === 'error') && (
-                    <ExclamationCircleIcon className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
-                  )}
-                  <span>{emailValidation.message}</span>
-                </div>
-              )}
-              
-              {/* Email suggestion */}
-              {emailValidation.suggestion && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    step1Form.setValue('email', emailValidation.suggestion)
-                    validateEmail(emailValidation.suggestion)
-                  }}
-                  className="mt-1 text-sm text-blue-600 hover:text-blue-800 underline"
-                >
-                  Use {emailValidation.suggestion} instead?
-                </button>
+              {(emailValidation.status === 'invalid' || emailValidation.status === 'error') && (
+                <p className="mt-1 text-sm text-red-600">{emailValidation.message}</p>
               )}
             </FormField>
-
+            
             {/* Phone */}
             <FormField
               label="Phone Number"
               required
               error={step1Form.formState.errors.phone?.message}
             >
-              <div className="relative">
-                <Controller
-                  name="phone"
-                  control={step1Form.control}
-                  render={({ field }) => (
-                    <PhoneInput
-                      value={field.value}
-                      onChange={(value) => {
-                        field.onChange(value)
-                        // Trigger validation after user stops typing
-                        if (value && value.length > 8) {
-                          setTimeout(() => validatePhone(value), 500)
-                        }
-                      }}
-                      error={step1Form.formState.errors.phone}
-                      className={cn(
-                        'pr-10',
-                        step1Form.formState.errors.phone && 'error',
-                        phoneValidation.status === 'invalid' && 'error',
-                        phoneValidation.status === 'valid' && 'success',
-                        !step1Form.formState.errors.phone && field.value && phoneValidation.status === 'idle' && 'neutral'
-                      )}
-                    />
-                  )}
-                />
-                
-                {/* Phone validation status icon */}
-                <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                  {isValidatingPhone ? (
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                  ) : phoneValidation.status === 'valid' ? (
-                    <CheckCircleIcon className="h-4 w-4 text-green-500" />
-                  ) : phoneValidation.status === 'invalid' ? (
-                    <ExclamationCircleIcon className="h-4 w-4 text-red-500" />
-                  ) : null}
-                </div>
-              </div>
-              
-              {/* Phone validation message */}
-              {phoneValidation.message && (
-                <p className={cn(
-                  'text-sm mt-1',
-                  phoneValidation.status === 'valid' && 'text-green-600',
-                  phoneValidation.status === 'invalid' && 'text-red-600',
-                  phoneValidation.status === 'validating' && 'text-blue-600',
-                  phoneValidation.status === 'error' && 'text-red-600'
-                )}>
-                  {phoneValidation.message}
-                </p>
+              <Controller
+                name="phone"
+                control={step1Form.control}
+                render={({ field }) => (
+                  <PhoneInput
+                    {...field}
+                    onBlur={(e) => {
+                      field.onBlur(e)
+                      if (e.target.value && !step1Form.formState.errors.phone) {
+                        validatePhone(e.target.value)
+                      }
+                    }}
+                    className={cn(
+                      'form-input text-base',
+                      step1Form.formState.errors.phone && 'error',
+                      phoneValidation.status === 'invalid' && 'error',
+                      phoneValidation.status === 'valid' && 'success'
+                    )}
+                  />
+                )}
+              />
+              {(phoneValidation.status === 'invalid' || phoneValidation.status === 'error') && (
+                <p className="mt-1 text-sm text-red-600">{phoneValidation.message}</p>
               )}
             </FormField>
 
             {/* Password */}
             <FormField
-              label="Create Password"
+              label="Password"
               required
               error={step1Form.formState.errors.password?.message}
+              description="Must contain 8+ characters, including at least 3 of these: uppercase, lowercase, number, or symbol."
             >
-              <div className="relative">
-                <Controller
-                  name="password"
-                  control={step1Form.control}
-                  render={({ field }) => (
+              <Controller
+                name="password"
+                control={step1Form.control}
+                render={({ field }) => (
+                  <div className="relative">
                     <input
                       {...field}
                       type={showPassword ? 'text' : 'password'}
                       autoComplete="new-password"
-                      placeholder="Create a strong password"
+                      placeholder="Enter a secure password"
                       className={cn(
-                        'form-input pr-12 text-base',
+                        'form-input text-base pr-10',
                         step1Form.formState.errors.password && 'error',
-                        !step1Form.formState.errors.password && passwordStrength.isValid && 'success'
+                        !step1Form.formState.errors.password && field.value && passwordStrength.isValid && 'success'
                       )}
                     />
-                  )}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  {showPassword ? (
-                    <EyeSlashIcon className="h-5 w-5" />
-                  ) : (
-                    <EyeIcon className="h-5 w-5" />
-                  )}
-                </button>
-              </div>
-              
-              {watchedPassword && (
-                <PasswordStrength 
-                  password={watchedPassword}
-                  strength={passwordStrength}
-                />
-              )}
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showPassword ? (
+                        <EyeSlashIcon className="h-5 w-5" />
+                      ) : (
+                        <EyeIcon className="h-5 w-5" />
+                      )}
+                    </button>
+                  </div>
+                )}
+              />
+              <PasswordStrength strength={passwordStrength} />
             </FormField>
 
-            {/* Next Button */}
+            {/* Step 1 Next Button */}
             <button
               type="submit"
-              disabled={
-                !step1Form.formState.isValid || 
-                !passwordStrength.isValid || 
-                isValidatingEmail ||
-                isValidatingPhone ||
-                (emailValidation.status === 'invalid') ||
-                (emailValidation.status === 'error') ||
-                (phoneValidation.status === 'invalid') ||
-                (phoneValidation.status === 'error')
-              }
+              disabled={!step1Form.formState.isValid || isValidatingEmail || isValidatingPhone || !passwordStrength.isValid}
               className={cn(
-                'w-full flex items-center justify-center rounded-lg px-4 py-4 text-base font-semibold shadow-sm transition-all duration-200',
-                'focus:ring-2 focus:ring-offset-2',
-                (step1Form.formState.isValid && passwordStrength.isValid && !isValidatingEmail && !isValidatingPhone && emailValidation.status !== 'invalid' && emailValidation.status !== 'error' && phoneValidation.status !== 'invalid' && phoneValidation.status !== 'error')
-                  ? 'text-white hover:transform hover:scale-[1.02] active:scale-[0.98]'
-                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                'w-full bg-blue-600 flex items-center justify-center rounded-lg px-4 py-4 text-base font-semibold text-white shadow-sm transition-all duration-200',
+                'focus:ring-2 focus:ring-offset-2 focus:ring-blue-600',
+                (!step1Form.formState.isValid || isValidatingEmail || isValidatingPhone || !passwordStrength.isValid)
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : 'hover:bg-blue-700 hover:transform hover:scale-[1.02] active:scale-[0.98]'
               )}
-              style={{
-                backgroundColor: (step1Form.formState.isValid && passwordStrength.isValid && !isValidatingEmail && !isValidatingPhone && emailValidation.status !== 'invalid' && emailValidation.status !== 'error' && phoneValidation.status !== 'invalid' && phoneValidation.status !== 'error') ? '#0475FF' : undefined,
-                focusRingColor: '#0475FF'
-              }}
             >
-              {isValidatingEmail ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-gray-300 border-t-white rounded-full animate-spin mr-2"></div>
-                  Validating Email...
-                </>
-              ) : isValidatingPhone ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-gray-300 border-t-white rounded-full animate-spin mr-2"></div>
-                  Validating Phone...
-                </>
-              ) : (
-                'Next'
-              )}
+              Next: Payment Details
+              <ArrowLeftIcon className="h-5 w-5 ml-2 transform rotate-180" />
             </button>
-
-            {/* Terms preview */}
-            <p className="text-center text-sm text-gray-500">
-              By continuing, you agree to our{' '}
-              <a href="#" className="underline hover:no-underline text-blue-600">
-                Terms of Service
-              </a>{' '}
-              and{' '}
-              <a href="#" className="underline hover:no-underline text-blue-600">
-                Privacy Policy
-              </a>
-              .
-            </p>
           </form>
         )}
 
-        {/* Step 2: Payment Information */}
+        {/* Step 2: Payment Details */}
         {currentStep === 2 && (
           <form onSubmit={step2Form.handleSubmit(onFinalSubmit)} className="space-y-6">
-            
-            {/* Back button */}
             <button
               type="button"
               onClick={goBackToStep1}
-              className="text-blue-600 hover:text-blue-800 flex items-center space-x-1 mb-6 text-sm font-medium transition-colors"
+              className="flex items-center text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors mb-4"
             >
-              <ArrowLeftIcon className="h-4 w-4" />
-              <span>Back to Contact Info</span>
+              <ArrowLeftIcon className="h-4 w-4 mr-1" />
+              Go back to edit info
             </button>
 
             {/* Payment Element */}
-            <div className="space-y-4">
-              <label className="block text-sm font-medium text-gray-700">
-                Card Information
-              </label>
-              <div className="p-3 border border-gray-300 rounded-lg shadow-sm focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500">
-                <PaymentElement 
-                  onReady={() => setPaymentElementReady(true)}
-                  options={{
-                    fields: {
-                      billingDetails: {
-                        address: 'never'
-                      }
-                    }
-                  }}
-                />
-              </div>
+            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+              <h3 className="text-lg font-semibold mb-3 text-gray-800 flex items-center">
+                <CreditCardIcon className="h-6 w-6 mr-2 text-blue-600" />
+                Payment Information
+              </h3>
+              <PaymentElement 
+                id="payment-element" 
+                onReady={() => setPaymentElementReady(true)}
+              />
             </div>
-
-            {/* Terms and Conditions Checkbox */}
+            
+            {/* Terms and Conditions */}
             <FormField
-              required
+              label=""
               error={step2Form.formState.errors.terms?.message}
             >
               <Controller
                 name="terms"
                 control={step2Form.control}
                 render={({ field }) => (
-                  <div className="flex items-start">
+                  <label className="flex items-start cursor-pointer space-x-3">
                     <input
                       {...field}
                       type="checkbox"
                       checked={field.value}
-                      className={cn(
-                        'form-checkbox h-4 w-4 rounded text-blue-600 focus:ring-blue-500 mt-0.5',
-                        step2Form.formState.errors.terms && 'error'
-                      )}
+                      className="form-checkbox h-5 w-5 text-blue-600 border-gray-300 rounded mt-0.5"
                     />
-                    <label 
-                      htmlFor="terms" 
-                      className="ml-3 text-sm font-medium text-gray-700"
-                    >
-                      I agree to the{' '}
-                      <a href="#" className="text-blue-600 hover:text-blue-800 underline">Terms and Conditions</a>{' '}
-                      and{' '}
-                      <a href="#" className="text-blue-600 hover:text-blue-800 underline">Privacy Policy</a>
-                    </label>
-                  </div>
+                    <span className="text-sm text-gray-700">
+                      I agree to the <a href="/terms" target="_blank" className="text-blue-600 hover:underline font-medium">Terms of Service</a> and acknowledge the 30-day free trial will automatically convert to the ${pricing.amount / 100}/{pricing.displayInterval} subscription unless cancelled.
+                    </span>
+                  </label>
                 )}
               />
             </FormField>
 
-            {/* Submit Button */}
+            {/* Final Submit Button */}
             <button
               type="submit"
               disabled={!step2Form.formState.isValid || !paymentElementReady || isSubmitting}
               className={cn(
                 'w-full flex items-center justify-center rounded-lg px-4 py-4 text-base font-semibold shadow-sm transition-all duration-200',
-                'focus:ring-2 focus:ring-offset-2',
+                'focus:ring-2 focus:ring-offset-2 focus:ring-blue-600',
                 (step2Form.formState.isValid && paymentElementReady && !isSubmitting)
-                  ? 'text-white hover:transform hover:scale-[1.02] active:scale-[0.98]'
+                  ? 'bg-blue-600 text-white hover:transform hover:scale-[1.02] active:scale-[0.98]'
                   : 'bg-gray-300 text-gray-500 cursor-not-allowed'
               )}
-              style={{
-                backgroundColor: (step2Form.formState.isValid && paymentElementReady && !isSubmitting) ? '#0475FF' : undefined,
-                focusRingColor: '#0475FF'
-              }}
             >
               {isSubmitting ? (
                 <>
@@ -914,7 +774,7 @@ export default function CheckoutForm({ pricing, subscriptionType, isSubmitting, 
               ) : (
                 <>
                   <CreditCardIcon className="h-5 w-5 mr-2" />
-                  Start Trial
+                  Start 30-Day Free Trial
                 </>
               )}
             </button>
@@ -925,10 +785,10 @@ export default function CheckoutForm({ pricing, subscriptionType, isSubmitting, 
         <div className="text-center text-xs text-gray-500">
           <div className="flex items-center justify-center space-x-2 mb-2">
             <CheckCircleIcon className="h-4 w-4 text-green-500" />
-            <span>Payments secured by Stripe.</span>
+            <span>Secure connection & Stripe payment processing.</span>
           </div>
-          <p className="max-w-xs mx-auto">
-            Your card will be charged $0.00 today. After your 30-day trial, your card will be automatically charged ${pricing.displayPrice} {pricing.displayInterval}. You can cancel anytime.
+          <p>
+            Your payment is securely processed by Stripe. We do not store any card information.
           </p>
         </div>
       </div>

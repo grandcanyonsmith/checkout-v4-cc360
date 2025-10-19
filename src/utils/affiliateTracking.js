@@ -1,6 +1,9 @@
 const AFFILIATE_ID_STORAGE_KEY = 'affiliateId';
 
-// 1. Function to read the stored ID from Local Storage
+/**
+ * Retrieves the stored affiliate ID from Local Storage.
+ * @returns {string | null} The affiliate ID or null if not found.
+ */
 export const getAffiliateId = () => {
   if (typeof window === 'undefined') return null;
   // Checks both keys for maximum compatibility
@@ -9,16 +12,19 @@ export const getAffiliateId = () => {
          null; 
 };
 
-// 2. Function to read the ID from the URL and save it
+/**
+ * Reads the affiliate ID from URL parameters ('am_id', 'affiliate_id', 'affiliateId') 
+ * and stores it in Local Storage. This function MUST be called once on app load (in App.jsx).
+ */
 export const initializeAffiliateTracking = () => {
   if (typeof window === 'undefined') return;
 
   const urlParams = new URLSearchParams(window.location.search);
-  // Prioritizes 'am_id' but checks other common keys
+  // Prioritize 'am_id' but check other common keys
   const amIdFromUrl = urlParams.get('am_id') || urlParams.get('affiliate_id') || urlParams.get('affiliateId');
 
   if (amIdFromUrl) {
-    // Stores the ID under both keys for redundancy on the current subdomain
+    // Store the ID under both keys for redundancy
     localStorage.setItem(AFFILIATE_ID_STORAGE_KEY, amIdFromUrl);
     localStorage.setItem('am_id', amIdFromUrl); 
   }
