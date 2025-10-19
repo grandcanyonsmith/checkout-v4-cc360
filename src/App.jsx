@@ -60,8 +60,9 @@ function App() {
   // FIX: Fetch clientSecret on component mount
   useEffect(() => {
     // API endpoint to get the Setup Intent Client Secret from your server
+    // FIX: Use relative path (empty string) for Vercel production/preview deployments
     const API_BASE_URL = process.env.NODE_ENV === 'production' 
-      ? 'https://cc360-checkout-v2-production.up.railway.app'
+      ? '' // Use relative path on Vercel for internal API calls
       : 'http://localhost:3001'
 
     async function fetchSetupIntentSecret() {
@@ -76,7 +77,10 @@ function App() {
         })
 
         if (!response.ok) {
-          throw new Error('Server returned an error when fetching setup secret.')
+          // Attempt to read server error details if available
+          const errorData = await response.json().catch(() => ({}));
+          const errorMsg = errorData.error || 'Server returned an error when fetching setup secret.';
+          throw new Error(errorMsg);
         }
 
         const data = await response.json()
@@ -89,6 +93,7 @@ function App() {
 
       } catch (error) {
         console.error('Error fetching client secret:', error)
+        // Display the technical error detail to the user
         setLoadingError(error.message || 'Failed to connect to billing server.')
       }
     }
