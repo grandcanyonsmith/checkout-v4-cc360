@@ -1,19 +1,21 @@
-import { useState, useEffect } from 'react'
-import { loadStripe } from '@stripe/stripe-js'
-import { Elements } from '@stripe/react-stripe-js'
-import { Toaster } from 'react-hot-toast'
-import { inject } from '@vercel/analytics'
+import { useState, useEffect } from 'react';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements } from '@stripe/react-stripe-js';
+import { Toaster } from 'react-hot-toast';
+import { inject } from '@vercel/analytics';
 
-import Header from './components/Header'
-import CheckoutForm from './components/CheckoutForm'
-import OrderSummary from './components/OrderSummary'
-import ErrorBoundary from './components/ErrorBoundary'
+import Header from './components/Header';
+import CheckoutForm from './components/CheckoutForm';
+import OrderSummary from './components/OrderSummary';
+import ErrorBoundary from './components/ErrorBoundary';
+// AFFILIATE TRACKING: Import global initialization function
+import { initializeAffiliateTracking } from './utils/affiliateTracking'; 
 
 // Initialize Stripe
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY)
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
 // Inject Vercel Analytics
-inject()
+inject();
 
 // Course Creator 360 Pricing Configuration
 const CC360_PRICING = {
@@ -33,63 +35,53 @@ const CC360_PRICING = {
       'Advanced marketing automation', 
       'Student analytics & insights',
       'Custom branding & domains',
-      'Priority support & coaching',
-      'Unlimited courses & students'
+      '24/7 priority support'
     ],
-    savings: null,
-    badge: 'Most Popular'
+    metadata: {
+      funnel_step: 'checkout_v4_cc360',
+      product_code: 'CC360-P-M'
+    }
   }
-}
+};
 
 function App() {
-  const [subscriptionType, setSubscriptionType] = useState('monthly')
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [subscriptionType, setSubscriptionType] = useState('monthly');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // AFFILIATE TRACKING: Initialize on app load to capture ID from URL and save to Local Storage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      initializeAffiliateTracking(); 
+    }
+  }, []); 
 
   // Always use monthly for Course Creator 360 flow
-  const currentPricing = CC360_PRICING.monthly
-
-  const stripeElementsOptions = {
-    mode: 'setup',
-    currency: 'usd',
-    payment_method_types: ['card'],
+  const currentPricing = CC360_PRICING.monthly;
+  
+  const options = {
+    clientSecret: '{{CLIENT_SECRET}}', // Placeholder
     appearance: {
       theme: 'stripe',
       variables: {
         colorPrimary: '#0475FF',
-        colorBackground: '#ffffff',
         colorText: '#111D2C',
-        colorDanger: '#FF2F00',
-        fontFamily: 'Helvetica Neue, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif',
-        spacingUnit: '4px',
-        borderRadius: '8px'
-      },
-      rules: {
-        '.Input': {
-          padding: '12px',
-          fontSize: '16px',
-          color: '#111D2C'
-        },
-        '.Input:focus': {
-          borderColor: '#0475FF',
-          boxShadow: '0 0 0 2px rgba(4, 117, 255, 0.1)'
-        }
+        colorBackground: '#ffffff',
+        colorDanger: '#ef4444',
+        fontFamily: '"Inter", sans-serif'
       }
-    },
-    loader: 'auto'
-  }
+    }
+  };
 
   return (
     <ErrorBoundary>
-      <Elements stripe={stripePromise} options={stripeElementsOptions}>
-        <div className="min-h-screen" style={{ backgroundColor: '#e9f4ff' }}>
+      <Elements stripe={stripePromise} options={options}>
+        <div className="min-h-screen bg-gray-50">
           <Toaster 
-            position="top-center"
+            position="top-right" 
             toastOptions={{
-              duration: 4000,
+              className: 'font-semibold',
               style: {
-                background: '#1f2937',
-                color: '#f9fafb',
-                fontSize: '14px',
+                padding: '12px',
                 fontWeight: '500'
               },
               success: {
@@ -136,7 +128,7 @@ function App() {
         </div>
       </Elements>
     </ErrorBoundary>
-  )
+  );
 }
 
-export default App 
+export default App;

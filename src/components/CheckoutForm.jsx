@@ -21,6 +21,8 @@ import phoneValidator from '../utils/phoneValidation'
 import FormField from './FormField'
 import PasswordStrength from './PasswordStrength'
 import PhoneInput from './PhoneInput'
+// AFFILIATE TRACKING FIX: Import function to read ID from the utility file
+import { getAffiliateId } from '../utils/affiliateTracking' 
 
 // Step 1 validation schema (personal info)
 const step1Schema = z.object({
@@ -64,27 +66,9 @@ const step2Schema = z.object({
 // Combined schema for final submission
 const fullSchema = step1Schema.merge(step2Schema)
 
-
 // =================================================================
-// >>> AFFILIATE TRACKING LOGIC <<<
-// =================================================================
-
-const AFFILIATE_ID_STORAGE_KEY = 'affiliateId';
-
-const getAffiliateId = () => {
-  // Retrieves the stored affiliate ID, defaults to null if not found.
-  return localStorage.getItem(AFFILIATE_ID_STORAGE_KEY) || null; 
-};
-
-const initializeAffiliateTracking = () => {
-  // Reads 'am_id' from URL and saves it to Local Storage.
-  const urlParams = new URLSearchParams(window.location.search);
-  const amIdFromUrl = urlParams.get('am_id');
-
-  if (amIdFromUrl) {
-    localStorage.setItem(AFFILIATE_ID_STORAGE_KEY, amIdFromUrl);
-  }
-};
+// NOTE: Affiliate tracking logic (getAffiliateId and initializeAffiliateTracking) 
+// has been moved to '../utils/affiliateTracking' and is initialized globally in App.jsx.
 // =================================================================
 
 
@@ -126,11 +110,6 @@ export default function CheckoutForm({ pricing, subscriptionType, isSubmitting, 
   })
 
   const watchedPassword = step1Form.watch('password')
-
-  // Affiliate Tracking: Read ID from URL and store in Local Storage on load
-  useEffect(() => {
-    initializeAffiliateTracking(); 
-  }, []); // Run only once on component mount
 
   // Update password strength when password changes
   useEffect(() => {
@@ -351,12 +330,12 @@ export default function CheckoutForm({ pricing, subscriptionType, isSubmitting, 
 
     const combinedData = { ...step1Data, ...step2Data }
 
-    // --- NEW LOGIC FOR AFFILIATE ID AND PHONE FORMAT ---
+    // --- LOGIC FOR AFFILIATE ID AND PHONE FORMAT ---
     // 1. Format phone number to E.164 (retains '+' and digits, removes other characters)
-    const formattedPhone = combinedData.phone.replace(/[^\d+]/g, ''); 
+    const formattedPhone = combinedData.phone.replace(/[^\d+]/g, '') 
     
-    // 2. Retrieve affiliate ID from Local Storage
-    const affiliateId = getAffiliateId();
+    // 2. Retrieve affiliate ID from Local Storage (using the imported function)
+    const affiliateId = getAffiliateId()
     // --------------------------------------------------------------------
 
     try {
@@ -366,7 +345,7 @@ export default function CheckoutForm({ pricing, subscriptionType, isSubmitting, 
       // Step 1: Create customer first
       const API_BASE_URL = process.env.NODE_ENV === 'production' 
         ? 'https://cc360-checkout-v2-production.up.railway.app'
-        : 'http://localhost:3001';
+        : 'http://localhost:3001'
       
       const customerResponse = await fetch(`${API_BASE_URL}/api/billing/create-customer`, {
         method: 'POST',
@@ -379,9 +358,7 @@ export default function CheckoutForm({ pricing, subscriptionType, isSubmitting, 
             subscription_type: subscriptionType,
             trial_signup: new Date().toISOString()
           },
-          // **********************************************
-          // FIX 1: Send affiliate ID using the consistent 'am_id' key (snake_case)
-          // **********************************************
+          // AFFILIATE FIX: Send affiliate ID using the consistent 'am_id' key
           am_id: affiliateId 
         })
       })
@@ -459,9 +436,7 @@ export default function CheckoutForm({ pricing, subscriptionType, isSubmitting, 
             email: combinedData.email,
             phone: formattedPhone // Use formatted phone
           },
-          // **********************************************
-          // FIX 2: Send affiliate ID using the consistent 'am_id' key (snake_case)
-          // **********************************************
+          // AFFILIATE FIX: Send affiliate ID using the consistent 'am_id' key
           am_id: affiliateId, 
         })
       })
@@ -488,7 +463,7 @@ export default function CheckoutForm({ pricing, subscriptionType, isSubmitting, 
       })
 
       // Show success message before redirect
-      toast.success('🎉 Trial started! Redirecting to your dashboard...')
+      toast.success('Trial started! Redirecting to your dashboard...')
       
       // Redirect to onboarding
       setTimeout(() => {
@@ -510,7 +485,7 @@ export default function CheckoutForm({ pricing, subscriptionType, isSubmitting, 
         {/* Header */}
         <div className="text-center">
           <h2 className="text-2xl font-bold mb-2" style={{ color: '#111D2C' }}>
-            Hey {step1Data?.firstName ? `${step1Data.firstName}` : 'there'} 👋
+            Hey {step1Data?.firstName ? `${step1Data.firstName}` : 'there'} 
           </h2>
           <p className="text-gray-600">
             Let's get your Course Creator 360 trial started!
@@ -837,98 +812,85 @@ export default function CheckoutForm({ pricing, subscriptionType, isSubmitting, 
             {/* Terms preview */}
             <p className="text-center text-sm text-gray-500">
               By continuing, you agree to our{' '}
-              <a href="#" className="underline hover:no-underline" style={{ color: '#0475FF' }}>
+              <a href="#" className="underline hover:no-underline text-blue-600">
                 Terms of Service
               </a>{' '}
               and{' '}
-              <a href="#" className="underline hover:no-underline" style={{ color: '#0475FF' }}>
+              <a href="#" className="underline hover:no-underline text-blue-600">
                 Privacy Policy
               </a>
+              .
             </p>
           </form>
         )}
 
-        {/* Step 2: Payment Method */}
+        {/* Step 2: Payment Information */}
         {currentStep === 2 && (
           <form onSubmit={step2Form.handleSubmit(onFinalSubmit)} className="space-y-6">
+            
             {/* Back button */}
             <button
               type="button"
               onClick={goBackToStep1}
-              className="flex items-center text-sm text-gray-600 hover:text-gray-800 transition-colors"
+              className="text-blue-600 hover:text-blue-800 flex items-center space-x-1 mb-6 text-sm font-medium transition-colors"
             >
-              <ArrowLeftIcon className="h-4 w-4 mr-1" />
-              Back
+              <ArrowLeftIcon className="h-4 w-4" />
+              <span>Back to Contact Info</span>
             </button>
 
-            {/* Payment Method Header */}
-            <div>
-              <h3 className="text-lg font-semibold mb-2" style={{ color: '#111D2C' }}>Payment Method</h3>
-              <p className="text-sm text-gray-600">
-                Your card will be validated but not charged during the 30-day trial
-              </p>
-            </div>
-
             {/* Payment Element */}
-            <FormField label="Card details" required>
-              <div className="mt-2 p-4 border border-gray-300 rounded-lg focus-within:ring-2 focus-within:border-transparent bg-white"
-                style={{
-                  '--focus-ring-color': '#0475FF',
-                  '--focus-border-color': '#0475FF'
-                }}
-                onFocus={(e) => {
-                  e.currentTarget.style.borderColor = '#0475FF';
-                  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(4, 117, 255, 0.1)';
-                }}
-                onBlur={(e) => {
-                  e.currentTarget.style.borderColor = '#d1d5db';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-              >
+            <div className="space-y-4">
+              <label className="block text-sm font-medium text-gray-700">
+                Card Information
+              </label>
+              <div className="p-3 border border-gray-300 rounded-lg shadow-sm focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500">
                 <PaymentElement 
                   onReady={() => setPaymentElementReady(true)}
+                  options={{
+                    fields: {
+                      billingDetails: {
+                        address: 'never'
+                      }
+                    }
+                  }}
                 />
               </div>
-              {!paymentElementReady && (
-                <div className="mt-2 text-sm text-gray-500 flex items-center">
-                  <div className="spinner h-4 w-4 mr-2" />
-                  Loading payment form...
-                </div>
-              )}
-            </FormField>
+            </div>
 
-            {/* Terms checkbox */}
-            <FormField error={step2Form.formState.errors.terms?.message}>
+            {/* Terms and Conditions Checkbox */}
+            <FormField
+              required
+              error={step2Form.formState.errors.terms?.message}
+            >
               <Controller
                 name="terms"
                 control={step2Form.control}
                 render={({ field }) => (
-                  <label className="flex items-start space-x-3 cursor-pointer">
+                  <div className="flex items-start">
                     <input
                       {...field}
                       type="checkbox"
                       checked={field.value}
-                      className="mt-1 h-4 w-4 border-gray-300 rounded focus:ring-2 focus:ring-offset-2"
-                      style={{
-                        accentColor: '#0475FF'
-                      }}
+                      className={cn(
+                        'form-checkbox h-4 w-4 rounded text-blue-600 focus:ring-blue-500 mt-0.5',
+                        step2Form.formState.errors.terms && 'error'
+                      )}
                     />
-                    <span className="text-sm text-gray-600">
-                      I have read and understand the{' '}
-                      <a href="#" className="underline hover:no-underline" style={{ color: '#0475FF' }}>
-                        Terms of Service
-                      </a>{' '}
+                    <label 
+                      htmlFor="terms" 
+                      className="ml-3 text-sm font-medium text-gray-700"
+                    >
+                      I agree to the{' '}
+                      <a href="#" className="text-blue-600 hover:text-blue-800 underline">Terms and Conditions</a>{' '}
                       and{' '}
-                      <a href="#" className="underline hover:no-underline" style={{ color: '#0475FF' }}>
-                        Privacy Policy
-                      </a>
-                    </span>
-                  </label>
+                      <a href="#" className="text-blue-600 hover:text-blue-800 underline">Privacy Policy</a>
+                    </label>
+                  </div>
                 )}
               />
             </FormField>
 
-            {/* Submit button */}
+            {/* Submit Button */}
             <button
               type="submit"
               disabled={!step2Form.formState.isValid || !paymentElementReady || isSubmitting}
@@ -963,9 +925,11 @@ export default function CheckoutForm({ pricing, subscriptionType, isSubmitting, 
         <div className="text-center text-xs text-gray-500">
           <div className="flex items-center justify-center space-x-2 mb-2">
             <CheckCircleIcon className="h-4 w-4 text-green-500" />
-            <span>Your payment information is secure</span>
+            <span>Payments secured by Stripe.</span>
           </div>
-          <p>Powered by Stripe • 256-bit SSL encryption</p>
+          <p className="max-w-xs mx-auto">
+            Your card will be charged $0.00 today. After your 30-day trial, your card will be automatically charged ${pricing.displayPrice} {pricing.displayInterval}. You can cancel anytime.
+          </p>
         </div>
       </div>
     </div>
